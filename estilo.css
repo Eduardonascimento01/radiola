@@ -161,7 +161,7 @@ button:focus-visible, label:focus-visible, input:focus-visible { outline: 3px so
   .palco { grid-template-columns: 380px minmax(0, 1fr); align-items: start; }
   .toca { position: sticky; top: 16px; }
 }
-.coluna { display: grid; gap: 16px; min-width: 0; align-content: start; }
+.coluna { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; align-content: start; }
 .toca, .fila, .estacao-painel, .colecao {
   background: var(--cartao); border: 1px solid var(--borda);
   border-radius: 18px; box-shadow: var(--sombra); padding: 18px;
@@ -414,7 +414,14 @@ input[type="range"]::-moz-range-thumb {
 }
 .aba.ativa { background: var(--ambar); color: var(--sobre-ambar); }
 .aba:active { transform: scale(0.97); }
-.aba-conteudo { display: grid; gap: 16px; min-width: 0; }
+.aba-conteudo { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+/* minmax(0, 1fr): numa grade, cada peça por padrão NÃO fica mais estreita que o próprio conteúdo.
+   O dial tem 7 estações lado a lado e empurrava a página para 495 px no celular.
+   Com isso, o dial fica da largura da tela e rola para o lado POR DENTRO. */
+.aba-conteudo > * { min-width: 0; }
+/* o dial tinha "margin: 0 auto" (para centralizar quando ficava fora das abas). Dentro de uma grade,
+   margem automática faz a peça ficar do tamanho do CONTEÚDO (os 7 botões = 479 px), não da coluna. */
+.aba-conteudo .dial { margin: 0; max-width: none; }
 .aba-conteudo[hidden] { display: none; }
 
 /* ---------- player compacto no celular ---------- */
