@@ -89,6 +89,26 @@ svg { width: 24px; height: 24px; display: block; }
 }
 .botao-icone:active, .estacao:not(:disabled):active, .botao-principal:active { transform: scale(0.95); }
 .botao-icone[aria-pressed="true"], .botao-icone.ligado { color: var(--ambar); }
+/* estrela de rádio favorita: ligada fica âmbar e preenchida (só a estrela, não os outros botões) */
+.estrela[aria-pressed="true"] path { fill: currentColor; }
+
+/* rádio ao vivo */
+.ao-vivo {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-weight: 700; color: #dc2626; font-size: .85rem;
+  letter-spacing: .5px; text-transform: uppercase;
+}
+.bolinha-aovivo {
+  width: 8px; height: 8px; border-radius: 50%; background: #dc2626;
+  animation: piscar 1.6s ease-in-out infinite;
+}
+@keyframes piscar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bolinha-aovivo { animation: none; }
+}
 .botao-icone .marca-um {
   position: absolute; right: 6px; bottom: 6px;
   font: 700 10px/14px system-ui; width: 14px; height: 14px; border-radius: 50%;

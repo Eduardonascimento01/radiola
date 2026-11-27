@@ -1,4 +1,4 @@
-// app.js: a tela do Radiola (etapa 1: tocar as músicas do seu aparelho).
+// app.js: a tela do Radiola (etapa 1, 2, 3 e 4).
 // As contas ficam no nucleo.js e a gaveta das músicas no banco.js.
 (function () {
   'use strict';
@@ -17,7 +17,8 @@
   let pos = -1;
   let repetir = ler('repetir', 'nao');     // 'nao' | 'todas' | 'uma'
   let aleatorio = ler('aleatorio', false);
-  let estacao = ler('estacao', 'arquivos');   // 'arquivos' | 'audius'
+  let estacao = ler('estacao', 'arquivos');   // 'arquivos' | 'audius' | 'radio'
+  let radio = null;
   let urlTocando = null;
   const capas = new Map();                  // id -> endereço temporário da imagem da capa
 
@@ -40,7 +41,7 @@
   }
 
   function urlDaCapa(m, pequena) {
-    if (m && m.capaUrl) return (pequena && m.capaPequena) || m.capaUrl;   // Audius: a capa vem da internet
+    if (m && m.capaUrl) return (pequena && m.capaPequena) || m.capaUrl;   // Audius / Rádio: a capa vem da internet
     if (!m || !m.capa) return null;
     if (!capas.has(m.id)) capas.set(m.id, URL.createObjectURL(m.capa));
     return capas.get(m.id);
@@ -92,6 +93,20 @@
   }
 
   function desenharTocando() {
+    if (radio) {
+      $('titulo').textContent = radio.nome;
+      $('artista').textContent = 'Rádio ao vivo' + (radio.generos.length ? ' · ' + radio.generos.join(', ') : '');
+      const url = radio.capaUrl;
+      $('capa').hidden = !url;
+      $('capa').onerror = () => { $('capa').hidden = true; };
+      if (url) $('capa').src = url; else $('capa').removeAttribute('src');
+      document.title = `${radio.nome} · Radiola`;
+      marcarAtual();
+      contarAoCelularRadio(radio);
+      if (typeof desenharAcoes === 'function') desenharAcoes();
+      desenharBotoes();
+      return;
+    }
     const m = atual();
     $('titulo').textContent = m ? m.titulo : 'Nenhuma música tocando';
     $('artista').textContent = m ? (m.artista || 'Artista desconhecido') + (m.album ? ' · ' + m.album : '')
@@ -105,6 +120,7 @@
     marcarAtual();
     contarAoCelular(m, url);
     if (typeof desenharAcoes === 'function') desenharAcoes();
+    desenharBotoes();
   }
 
   function marcarAtual() {
@@ -113,6 +129,8 @@
   }
 
   function desenharBotoes() {
+    $('aleatorio').disabled = !!radio;
+    $('repetir').disabled = !!radio;
     $('aleatorio').setAttribute('aria-pressed', String(aleatorio));
     const r = $('repetir');
     r.dataset.modo = repetir;
@@ -126,6 +144,14 @@
 
   function desenharTempo() {
     const p = $('progresso');
+    if (radio) {
+      p.max = 0; p.value = 0; p.disabled = true;
+      encher(p);
+      $('tempoAtual').innerHTML = '<span class="ao-vivo"><span class="bolinha-aovivo" aria-hidden="true"></span>AO VIVO</span>';
+      $('tempoTotal').textContent = '';
+      return;
+    }
+    p.disabled = false;
     // enquanto o navegador não sabe a duração (música da internet ainda carregando), usa a que já guardamos
     const dur = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : ((atual() && atual().duracao) || 0);
     if (!arrastando) { p.max = dur; p.value = audio.currentTime || 0; }
@@ -146,6 +172,18 @@
       });
     } catch { }
   }
+
+  function contarAoCelularRadio(r) {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: r.nome, artist: 'Rádio ao vivo', album: r.pais || 'Radiola',
+        artwork: r.capaUrl ? [{ src: r.capaUrl, sizes: '480x480', type: 'image/jpeg' }]
+          : [{ src: 'icone-512.png', sizes: '512x512', type: 'image/png' }],
+      });
+    } catch { }
+  }
+
   if ('mediaSession' in navigator) {
     const acao = (nome, fn) => { try { navigator.mediaSession.setActionHandler(nome, fn); } catch { } };
     acao('play', () => tocarOuPausar(true));
@@ -160,6 +198,7 @@
   // ---------- tocar ----------
   // Põe a música do lugar "p" da ordem no aparelho. tocarJa=false só deixa pronta.
   function carregar(p, tocarJa = true, comecarEm = 0) {
+    radio = null;
     if (p < 0 || p >= ordem.length) return;
     pos = p;
     const m = atual();
@@ -178,13 +217,18 @@
   // Clicou numa música da lista (lugar i na tela)
   function tocarDaTela(i) {
     const p = ordem.indexOf(i);
-    if (p === pos && audio.src) { tocarOuPausar(); return; }
+    if (p === pos && audio.src && !radio) { tocarOuPausar(); return; }
     carregar(p);
   }
 
   function tocarOuPausar(forcarTocar) {
+    if (radio) {
+      if (audio.paused || forcarTocar) audio.play().catch(() => {});
+      else audio.pause();
+      return;
+    }
     if (!musicas.length) {
-      if (estacao === 'audius') $('buscaAudius').focus(); else $('arquivos').click();
+      if (estacao === 'audius') $('buscaAudius').focus(); else if (estacao === 'radio') $('buscaRadio').focus(); else $('arquivos').click();
       return;
     }
     if (!audio.src) { carregar(pos >= 0 ? pos : 0); return; }
@@ -193,6 +237,7 @@
   }
 
   function proxima(manual) {
+    if (radio) return;
     const p = N.avancar(pos, ordem.length, repetir, manual);
     if (p < 0) {            // acabou a fila: volta para o começo, parado
       audio.pause();
@@ -204,6 +249,7 @@
   }
 
   function anterior() {
+    if (radio) return;
     // igual aos aparelhos de som: com mais de 3 s tocados, "anterior" volta ao começo da música
     if (audio.currentTime > 3) { audio.currentTime = 0; return; }
     carregar(N.voltar(pos, ordem.length, repetir), !audio.paused || !audio.src);
@@ -320,8 +366,8 @@
   // barra da música: enquanto arrasta, só mostra o tempo; ao soltar, pula
   let arrastando = false;
   const prog = $('progresso');
-  prog.addEventListener('input', () => { arrastando = true; desenharTempo(); });
-  prog.addEventListener('change', () => { audio.currentTime = +prog.value; arrastando = false; desenharTempo(); });
+  prog.addEventListener('input', () => { if (radio) return; arrastando = true; desenharTempo(); });
+  prog.addEventListener('change', () => { if (radio) return; audio.currentTime = +prog.value; arrastando = false; desenharTempo(); });
 
   const vol = $('volume');
   vol.value = audio.volume; encher(vol);
@@ -339,15 +385,20 @@
   // ---------- o "aparelho" avisa o que está acontecendo ----------
   let ultimoGravado = 0;
   audio.addEventListener('timeupdate', () => {
+    if (radio) return;
     desenharTempo();
     if (Date.now() - ultimoGravado > 4000) { ultimoGravado = Date.now(); gravar('tempo', audio.currentTime); }
   });
-  audio.addEventListener('loadedmetadata', desenharTempo);
+  audio.addEventListener('loadedmetadata', () => { if (!radio) desenharTempo(); });
   audio.addEventListener('play', () => { document.body.classList.add('tocando'); $('tocar').setAttribute('aria-label', 'Pausar'); });
-  audio.addEventListener('pause', () => { document.body.classList.remove('tocando'); $('tocar').setAttribute('aria-label', 'Tocar'); gravar('tempo', audio.currentTime); });
-  audio.addEventListener('ended', () => proxima(false));
+  audio.addEventListener('pause', () => { document.body.classList.remove('tocando'); $('tocar').setAttribute('aria-label', 'Tocar'); if (!radio) gravar('tempo', audio.currentTime); });
+  audio.addEventListener('ended', () => { if (radio) return; proxima(false); });
   audio.addEventListener('error', () => {
     if (!audio.getAttribute('src')) return;
+    if (radio) {
+      aviso(`A rádio ${radio.nome} não respondeu agora. Tente outra.`);
+      return;
+    }
     const m = atual();
     aviso(`Não consegui tocar "${m ? m.titulo : 'esta música'}". Pulei para a próxima.`);
     if (ordem.length > 1) setTimeout(() => proxima(true), 800);
@@ -359,8 +410,8 @@
     if (e.code === 'Space' && !e.target.closest('button')) { e.preventDefault(); tocarOuPausar(); }
     else if (e.key === 'ArrowRight' && e.shiftKey) proxima(true);
     else if (e.key === 'ArrowLeft' && e.shiftKey) anterior();
-    else if (e.key === 'ArrowRight' && e.target.type !== 'range') audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 5);
-    else if (e.key === 'ArrowLeft' && e.target.type !== 'range') audio.currentTime = Math.max(0, audio.currentTime - 5);
+    else if (e.key === 'ArrowRight' && e.target.type !== 'range' && !radio) audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 5);
+    else if (e.key === 'ArrowLeft' && e.target.type !== 'range' && !radio) audio.currentTime = Math.max(0, audio.currentTime - 5);
   });
 
   // arrastar arquivos do computador para a página
@@ -378,7 +429,7 @@
   // ---------- estações do dial (de onde vem o som) ----------
   const ESTACOES = [...document.querySelectorAll('.estacao[data-estacao]')];
   function mostrarEstacao(nome) {
-    estacao = nome === 'audius' ? 'audius' : 'arquivos';
+    estacao = nome === 'audius' ? 'audius' : nome === 'radio' ? 'radio' : 'arquivos';
     gravar('estacao', estacao);
     ESTACOES.forEach(b => {
       const ativa = b.dataset.estacao === estacao;
@@ -390,7 +441,9 @@
     const k = todas.findIndex(b => b.dataset.estacao === estacao);
     $('dial').style.setProperty('--ponteiro', ((k + 0.5) / todas.length * 100) + '%');
     $('painelAudius').hidden = estacao !== 'audius';
+    $('painelRadio').hidden = estacao !== 'radio';
     if (estacao === 'audius' && !$('resultadosAudius').children.length) carregarEmAlta();
+    if (estacao === 'radio' && !$('resultadosRadio').children.length) carregarMaisOuvidasRadio();
   }
   ESTACOES.forEach(b => b.addEventListener('click', () => mostrarEstacao(b.dataset.estacao)));
 
@@ -466,6 +519,109 @@
     } else if (!tocarJa) aviso(`"${m.titulo}" já está na fila.`);
     if (tocarJa) carregar(ordem.indexOf(i));
     else if (pos < 0) carregar(ordem.indexOf(i), false);
+  }
+
+
+  // ---------- Rádio: rádios ao vivo do Brasil e do mundo ----------
+  const Radio = window.Radio;
+  const avisoRadio = t => { $('avisoRadio').textContent = t || ''; };
+  let pedidoRadio = 0;
+  const favoritasRadio = ler('radios-favoritas', []);
+
+  async function mostrarResultadosRadio(promessa, carregando, titulo) {
+    const meu = ++pedidoRadio;
+    avisoRadio(carregando);
+    let lista;
+    try { lista = await promessa; }
+    catch (e) { if (meu === pedidoRadio) avisoRadio(e.message); return; }
+    if (meu !== pedidoRadio) return;
+    avisoRadio(lista.length ? titulo : 'Nada encontrado. Tente outra palavra.');
+    desenharResultadosRadio(lista);
+  }
+
+  const carregarMaisOuvidasRadio = () => mostrarResultadosRadio(Radio.maisOuvidasBrasil(), 'Carregando as rádios mais ouvidas...', 'Mais ouvidas no Brasil:');
+  function buscarRadio() {
+    const q = $('buscaRadio').value.trim();
+    if (!q) { carregarMaisOuvidasRadio(); return; }
+    mostrarResultadosRadio(Radio.buscar(q), `Buscando "${q}"...`, `Resultados para "${q}":`);
+  }
+  $('buscarRadio').onclick = buscarRadio;
+  $('buscaRadio').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); buscarRadio(); } });
+
+  let ultimaListaRadio = [];   // o que está na tela agora (para redesenhar sem baixar de novo)
+  function desenharResultadosRadio(lista) {
+    ultimaListaRadio = lista;
+    const ol = $('resultadosRadio');
+    ol.textContent = '';
+    lista.forEach(r => {
+      ol.append(criarItemRadio(r));
+    });
+  }
+
+  function criarItemRadio(r) {
+    const li = document.createElement('li');
+    li.className = 'faixa' + (radio && radio.uuid === r.uuid ? ' atual' : '');
+    const capa = document.createElement('button');
+    capa.type = 'button';
+    capa.className = 'faixa-capa';
+    capa.setAttribute('aria-label', 'Tocar ' + r.nome);
+    preencherCapa(capa, { titulo: r.nome, capaUrl: r.capaUrl });
+    capa.onclick = () => tocarRadio(r);
+
+    const texto = document.createElement('button');
+    texto.type = 'button';
+    texto.className = 'faixa-texto';
+    const t = document.createElement('strong'); t.textContent = r.nome;
+    const a = document.createElement('span');
+    const detalhes = [...r.generos, r.qualidade].filter(Boolean).join(' · ');
+    a.textContent = detalhes || r.pais || 'Rádio ao vivo';
+    texto.append(t, a);
+    texto.onclick = () => tocarRadio(r);
+
+    const favBtn = document.createElement('button');
+    favBtn.type = 'button';
+    const favorita = favoritasRadio.some(x => x.uuid === r.uuid);
+    favBtn.className = 'botao-icone estrela';
+    favBtn.setAttribute('aria-pressed', String(favorita));
+    favBtn.title = favorita ? 'Tirar dos favoritos' : 'Favoritar rádio';
+    favBtn.setAttribute('aria-label', (favorita ? 'Tirar dos favoritos: ' : 'Favoritar: ') + r.nome);
+    favBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+    favBtn.onclick = () => alternarFavoritaRadio(r);
+
+    li.append(capa, texto, favBtn);
+    return li;
+  }
+
+  function alternarFavoritaRadio(r) {
+    const i = favoritasRadio.findIndex(x => x.uuid === r.uuid);
+    if (i >= 0) favoritasRadio.splice(i, 1);
+    else favoritasRadio.push(r);
+    gravar('radios-favoritas', favoritasRadio);
+    desenharFavoritasRadio();
+    desenharResultadosRadio(ultimaListaRadio);
+    avisoRadio(i >= 0 ? `"${r.nome}" saiu das favoritas.` : `"${r.nome}" foi para as favoritas.`);
+  }
+
+  function desenharFavoritasRadio() {
+    const bloco = $('blocoFavoritasRadio');
+    const ol = $('favoritasRadio');
+    bloco.hidden = !favoritasRadio.length;
+    ol.textContent = '';
+    favoritasRadio.forEach(r => {
+      ol.append(criarItemRadio(r));
+    });
+  }
+
+  function tocarRadio(r) {
+    radio = r;
+    audio.src = r.url;
+    audio.play().catch(() => {});
+    Radio.contarClique(r.uuid);
+    desenharTocando();
+    desenharTempo();
+    desenharResultadosRadio(ultimaListaRadio);   // marca a rádio que está tocando
+    desenharFavoritasRadio();
+    aviso(`Tocando a rádio ${r.nome} ao vivo.`);
   }
 
 
@@ -629,8 +785,8 @@
   function desenharAcoes() {
     const m = atual();
     const curtida = !!m && curtidas.includes(m.id);
-    $('curtir').disabled = !m;
-    $('porNaPlaylist').disabled = !m;
+    $('curtir').disabled = !m || !!radio;
+    $('porNaPlaylist').disabled = !m || !!radio;
     $('curtir').setAttribute('aria-pressed', String(curtida));
     $('curtir').querySelector('span').textContent = curtida ? 'Curtida' : 'Curtir';
     $('curtir').setAttribute('aria-label', curtida ? 'Descurtir esta música' : 'Curtir esta música');
@@ -729,6 +885,7 @@
     } else if (musicas.length) carregar(0, false);
     else desenharTocando();
     desenharTempo();
+    desenharFavoritasRadio();
   }
   iniciar();
 

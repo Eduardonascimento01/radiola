@@ -114,6 +114,34 @@ teste('Audius: resposta da API vira música da fila (e só as que tocam)', () =>
   assert.ok(A.enderecoDoSom('YmJWK').startsWith('https://api.audius.co/v1/tracks/YmJWK/stream?app_name=radiola'));
 });
 
+const R = require('./radio.js');
+teste('Rádio: só https, sem repetidas, nome e gêneros', () => {
+  const lista = [
+    { stationuuid: '1', name: 'Boa', url_resolved: 'https://radio.com/stream', favicon: 'https://radio.com/ico.png', tags: 'rock, pop, ', country: 'Brazil' },
+    { stationuuid: '2', name: 'Ruim HTTP', url_resolved: 'http://radio.com/stream', favicon: 'https://radio.com/ico.png', tags: 'samba' },
+    { stationuuid: '3', name: 'Repetida', url_resolved: 'https://radio.com/stream', favicon: 'https://radio.com/ico.png', tags: 'rock' },
+    { name: 'Sem ID', url_resolved: 'https://radio.com/stream2', tags: 'jazz' },
+    { stationuuid: '4', name: 'Favicon HTTP', url_resolved: 'https://radio.com/stream3', favicon: 'http://radio.com/ico.png', tags: 'notícias' }
+  ];
+  const t = R.tocaveis(lista);
+  assert.strictEqual(t.length, 2);
+  assert.strictEqual(t[0].nome, 'Boa');
+  assert.strictEqual(t[0].capaUrl, 'https://radio.com/ico.png');
+  assert.deepStrictEqual(t[0].generos, ['rock', 'pop']);
+  assert.strictEqual(t[1].nome, 'Favicon HTTP');
+  assert.strictEqual(t[1].capaUrl, null);
+});
+
+teste('Rádio: juntar a busca por nome e por estilo sem perder nada (e sem repetir)', () => {
+  const porNome = R.tocaveis([{ stationuuid: 'a', name: 'Rádio Samba', url_resolved: 'https://x/a' }]);
+  const porEstilo = R.tocaveis([
+    { stationuuid: 'a', name: 'Rádio Samba', url_resolved: 'https://x/a' },
+    { stationuuid: 'b', name: 'Pagode FM', url_resolved: 'https://x/b', tags: 'samba' },
+  ]);
+  const j = R.juntar(porNome, porEstilo);
+  assert.deepStrictEqual(j.map(e => e.nome), ['Rádio Samba', 'Pagode FM']);
+});
+
 const C = require('./colecao.js');
 teste('coleção: criar playlist (nome limpo, sem repetir)', () => {
   const pls = [];
