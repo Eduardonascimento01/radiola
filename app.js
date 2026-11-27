@@ -24,7 +24,8 @@
   let pos = -1;
   let repetir = ler('repetir', 'nao');     // 'nao' | 'todas' | 'uma'
   let aleatorio = ler('aleatorio', false);
-  let estacao = ler('estacao', 'arquivos');   // 'arquivos' | 'audius' | 'archive' | 'radio' | 'youtube' | 'spotify'
+  let estacao = ler('estacao', 'arquivos');   // 'arquivos' | 'audius' | 'archive' | 'radio' | 'links'
+  if (estacao === 'youtube' || estacao === 'spotify') estacao = 'links';
   let aba = ler('aba', 'fila');         // 'fila' | 'estacao' | 'colecao'
   let radio = null;
   let urlTocando = null;
@@ -540,6 +541,7 @@
 
   // ---------- Atalhos de teclado ----------
   $('abrirAtalhos').onclick = () => $('dialogoAtalhos').showModal();
+  if ($('botaoAtalhosPc')) $('botaoAtalhosPc').onclick = () => $('dialogoAtalhos').showModal();
   $('fecharDialogoAtalhos').onclick = () => $('dialogoAtalhos').close();
   $('dialogoAtalhos').addEventListener('click', e => { if (e.target === $('dialogoAtalhos')) $('dialogoAtalhos').close(); });
 
@@ -645,7 +647,7 @@
   // ---------- estações do dial (de onde vem o som) ----------
   const ESTACOES = [...document.querySelectorAll('.estacao[data-estacao]')];
   function mostrarEstacao(nome, mudarAba = true) {
-    estacao = nome === 'youtube' ? 'youtube' : nome === 'spotify' ? 'spotify' : nome === 'audius' ? 'audius' : nome === 'archive' ? 'archive' : nome === 'radio' ? 'radio' : 'arquivos';
+    estacao = nome === 'links' || nome === 'youtube' || nome === 'spotify' ? 'links' : nome === 'audius' ? 'audius' : nome === 'archive' ? 'archive' : nome === 'radio' ? 'radio' : 'arquivos';
     gravar('estacao', estacao);
     if (mudarAba) mostrarAba('estacao');
     ESTACOES.forEach(b => {
@@ -668,22 +670,9 @@
     $('painelAudius').hidden = estacao !== 'audius';
     $('painelArchive').hidden = estacao !== 'archive';
     $('painelRadio').hidden = estacao !== 'radio';
-    $('painelVitrine').hidden = estacao !== 'youtube' && estacao !== 'spotify';
+    $('painelVitrine').hidden = estacao !== 'links';
 
-    if (estacao === 'youtube' || estacao === 'spotify') {
-      if (estacao === 'youtube') {
-        $('tituloVitrine').textContent = 'YouTube';
-        $('creditoVitrine').textContent = 'youtube.com ↗';
-        $('creditoVitrine').href = 'https://www.youtube.com';
-        $('explicaVitrine').textContent = 'Cole o link de um vídeo ou playlist do YouTube. O vídeo toca aqui dentro, pelo player do próprio YouTube.';
-        $('linkVitrine').placeholder = 'https://youtu.be/...';
-      } else {
-        $('tituloVitrine').textContent = 'Spotify';
-        $('creditoVitrine').textContent = 'open.spotify.com ↗';
-        $('creditoVitrine').href = 'https://open.spotify.com';
-        $('explicaVitrine').textContent = 'Cole o link de uma música, álbum ou playlist do Spotify. Sem login no Spotify neste navegador, toca uma prévia de 30 segundos; com login, a música inteira.';
-        $('linkVitrine').placeholder = 'https://open.spotify.com/...';
-      }
+    if (estacao === 'links') {
       desenharVitrine();
     }
 
@@ -693,7 +682,7 @@
   }
   ESTACOES.forEach(b => b.addEventListener('click', () => mostrarEstacao(b.dataset.estacao, true)));
 
-  // ---------- Vitrine (YouTube e Spotify) ----------
+  // ---------- Vitrine (YouTube, Spotify, Deezer, SoundCloud, Apple Music) ----------
   const Vitrine = window.Vitrine;
   // links guardados: confere cada um de novo antes de usar (o que veio estranho é descartado)
   let itensVitrine = (Array.isArray(ler('vitrine', [])) ? ler('vitrine', []) : []).filter(Vitrine.valido);
@@ -703,21 +692,24 @@
     video: 'vídeo',
     playlist: 'playlist',
     track: 'música',
+    song: 'música',
     album: 'álbum',
     artist: 'artista',
     episode: 'episódio',
     show: 'podcast'
   };
+  const nomesApps = { youtube: 'YouTube', spotify: 'Spotify', deezer: 'Deezer', soundcloud: 'SoundCloud', apple: 'Apple Music' };
 
   async function abrirLinkVitrine() {
     const texto = $('linkVitrine').value;
     const link = Vitrine.lerLink(texto);
     if (!link) {
-      avisoVitrine(estacao === 'spotify' ? 'Esse link não parece do Spotify.' : 'Esse link não parece do YouTube.');
+      if (texto && texto.includes('deezer.page.link')) {
+        avisoVitrine('Copie o link completo da música no Deezer (Compartilhar > Copiar link).');
+      } else {
+        avisoVitrine('Esse link não é de um app que a Radiola conhece (YouTube, Spotify, Deezer, SoundCloud ou Apple Music).');
+      }
       return;
-    }
-    if (link.fonte !== estacao) {
-      mostrarEstacao(link.fonte);
     }
     avisoVitrine('Abrindo...');
     const info = await Vitrine.buscarInfo(link);
@@ -761,7 +753,7 @@
   function desenharVitrine() {
     const ol = $('listaVitrine');
     ol.textContent = '';
-    const filtrados = itensVitrine.filter(i => i.fonte === estacao);
+    const filtrados = itensVitrine;
     $('tituloLinksVitrine').hidden = !filtrados.length;   // sem links ainda: sem o título vazio
     filtrados.forEach(item => {
       const li = document.createElement('li');
@@ -779,8 +771,10 @@
       texto.className = 'faixa-texto';
       const t = document.createElement('strong'); t.textContent = item.titulo;
       const a = document.createElement('span');
-      const tipoStr = tiposPt[item.tipo] || item.tipo;
-      a.textContent = (item.autor ? item.autor + ' · ' : '') + tipoStr;
+      const nomeApp = nomesApps[item.fonte] || item.fonte;
+      // Apple Music: álbum com ?i= é UMA música daquele álbum
+      const tipoStr = item.fonte === 'apple' && item.lista ? 'música' : (tiposPt[item.tipo] || item.tipo);
+      a.textContent = nomeApp + (item.autor ? ' · ' + item.autor : '') + ' · ' + tipoStr;
       texto.append(t, a);
       texto.onclick = () => abrirNoPlayerVitrine(item);
 

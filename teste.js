@@ -327,6 +327,63 @@ teste('Vitrine: lê links do YouTube e do Spotify', () => {
   assert.strictEqual(V.enderecoDoPlayer(itemAlbumSpotify), 'https://open.spotify.com/embed/album/1GbtB4zTqAsyfZEsm1RZfx');
 });
 
+teste('Outros apps: Deezer, SoundCloud e Apple Music', () => {
+  // Deezer válidos
+  assert.deepStrictEqual(V.lerLink('https://www.deezer.com/br/track/3135556'), {
+    fonte: 'deezer', tipo: 'track', codigo: '3135556', lista: null, pais: 'br'
+  });
+  assert.deepStrictEqual(V.lerLink('https://deezer.com/album/12345'), {
+    fonte: 'deezer', tipo: 'album', codigo: '12345', lista: null
+  });
+
+  // SoundCloud válidos
+  assert.deepStrictEqual(V.lerLink('https://soundcloud.com/forss/flickermood'), {
+    fonte: 'soundcloud', tipo: 'track', codigo: 'forss/flickermood', lista: null
+  });
+  assert.deepStrictEqual(V.lerLink('https://soundcloud.com/user/sets/my-playlist'), {
+    fonte: 'soundcloud', tipo: 'playlist', codigo: 'user/sets/my-playlist', lista: null
+  });
+
+  // Apple Music válidos
+  assert.deepStrictEqual(V.lerLink('https://music.apple.com/br/album/samba/123456'), {
+    fonte: 'apple', tipo: 'album', codigo: '123456', lista: null, pais: 'br'
+  });
+  assert.deepStrictEqual(V.lerLink('https://music.apple.com/us/album/disco/123456?i=7890'), {
+    fonte: 'apple', tipo: 'album', codigo: '123456', lista: '7890', pais: 'us'
+  });
+  assert.deepStrictEqual(V.lerLink('https://music.apple.com/br/playlist/top-hits/pl.123456789'), {
+    fonte: 'apple', tipo: 'playlist', codigo: 'pl.123456789', lista: null, pais: 'br'
+  });
+
+  // enderecoDoPlayer
+  assert.strictEqual(
+    V.enderecoDoPlayer({ fonte: 'deezer', tipo: 'track', codigo: '3135556' }),
+    'https://widget.deezer.com/widget/dark/track/3135556'
+  );
+  assert.strictEqual(
+    V.enderecoDoPlayer({ fonte: 'soundcloud', tipo: 'track', codigo: 'forss/flickermood' }),
+    'https://w.soundcloud.com/player/?url=' + encodeURIComponent('https://soundcloud.com/forss/flickermood') + '&visual=false&show_comments=false'
+  );
+  assert.strictEqual(
+    V.enderecoDoPlayer({ fonte: 'apple', tipo: 'album', codigo: '123456', pais: 'br', lista: '7890' }),
+    'https://embed.music.apple.com/br/album/123456?i=7890'
+  );
+
+  // Inválidos -> null
+  assert.strictEqual(V.lerLink('https://deezer.com.falso.net/track/1'), null);
+  assert.strictEqual(V.lerLink('https://www.deezer.com/track/abc'), null);
+  assert.strictEqual(V.lerLink('https://soundcloud.com/so-um'), null);
+  assert.strictEqual(V.lerLink('https://music.apple.com/br/album/x/<script>'), null);
+
+  // valido()
+  assert.ok(V.valido({ id: 'd1', fonte: 'deezer', tipo: 'track', codigo: '3135556' }));
+  assert.ok(!V.valido({ id: 'd2', fonte: 'deezer', tipo: 'track', codigo: 'abc' }));
+  assert.ok(V.valido({ id: 's1', fonte: 'soundcloud', tipo: 'track', codigo: 'a/b' }));
+  assert.ok(!V.valido({ id: 's2', fonte: 'soundcloud', tipo: 'track', codigo: 'a/b/c/d' }));
+  assert.ok(V.valido({ id: 'a1', fonte: 'apple', tipo: 'album', codigo: '12345' }));
+  assert.ok(!V.valido({ id: 'a2', fonte: 'apple', tipo: 'album', codigo: 'x"><script>' }));
+});
+
 teste('coleção: criar playlist (nome limpo, sem repetir)', () => {
   const pls = [];
   assert.strictEqual(C.criar(pls, '   '), null);
