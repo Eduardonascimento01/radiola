@@ -17,7 +17,7 @@
   let pos = -1;
   let repetir = ler('repetir', 'nao');     // 'nao' | 'todas' | 'uma'
   let aleatorio = ler('aleatorio', false);
-  let estacao = ler('estacao', 'arquivos');   // 'arquivos' | 'audius' | 'radio'
+  let estacao = ler('estacao', 'arquivos');   // 'arquivos' | 'audius' | 'radio' | 'youtube' | 'spotify'
   let radio = null;
   let urlTocando = null;
   const capas = new Map();                  // id -> endereço temporário da imagem da capa
@@ -390,7 +390,15 @@
     if (Date.now() - ultimoGravado > 4000) { ultimoGravado = Date.now(); gravar('tempo', audio.currentTime); }
   });
   audio.addEventListener('loadedmetadata', () => { if (!radio) desenharTempo(); });
-  audio.addEventListener('play', () => { document.body.classList.add('tocando'); $('tocar').setAttribute('aria-label', 'Pausar'); });
+  audio.addEventListener('play', () => {
+    document.body.classList.add('tocando');
+    $('tocar').setAttribute('aria-label', 'Pausar');
+    if (itemVitrineAtual) {
+      itemVitrineAtual = null;
+      $('playerVitrine').textContent = '';
+      desenharVitrine();
+    }
+  });
   audio.addEventListener('pause', () => { document.body.classList.remove('tocando'); $('tocar').setAttribute('aria-label', 'Tocar'); if (!radio) gravar('tempo', audio.currentTime); });
   audio.addEventListener('ended', () => { if (radio) return; proxima(false); });
   audio.addEventListener('error', () => {
@@ -429,12 +437,19 @@
   // ---------- estações do dial (de onde vem o som) ----------
   const ESTACOES = [...document.querySelectorAll('.estacao[data-estacao]')];
   function mostrarEstacao(nome) {
-    estacao = nome === 'audius' ? 'audius' : nome === 'radio' ? 'radio' : 'arquivos';
+    estacao = nome === 'youtube' ? 'youtube' : nome === 'spotify' ? 'spotify' : nome === 'audius' ? 'audius' : nome === 'radio' ? 'radio' : 'arquivos';
     gravar('estacao', estacao);
     ESTACOES.forEach(b => {
       const ativa = b.dataset.estacao === estacao;
       b.classList.toggle('ativa', ativa);
       b.setAttribute('aria-pressed', String(ativa));
+      // no celular o dial rola para o lado: traz a estação escolhida para dentro da tela (só na horizontal)
+      if (ativa) {
+        const caixa = b.parentElement;
+        const esq = b.offsetLeft - caixa.offsetLeft, dir = esq + b.offsetWidth;
+        if (esq < caixa.scrollLeft) caixa.scrollLeft = esq - 8;
+        else if (dir > caixa.scrollLeft + caixa.clientWidth) caixa.scrollLeft = dir - caixa.clientWidth + 8;
+      }
     });
     // o ponteiro âmbar do dial anda até a estação escolhida
     const todas = [...document.querySelectorAll('.estacao')];
@@ -442,10 +457,146 @@
     $('dial').style.setProperty('--ponteiro', ((k + 0.5) / todas.length * 100) + '%');
     $('painelAudius').hidden = estacao !== 'audius';
     $('painelRadio').hidden = estacao !== 'radio';
+    $('painelVitrine').hidden = estacao !== 'youtube' && estacao !== 'spotify';
+
+    if (estacao === 'youtube' || estacao === 'spotify') {
+      if (estacao === 'youtube') {
+        $('tituloVitrine').textContent = 'YouTube';
+        $('creditoVitrine').textContent = 'youtube.com ↗';
+        $('creditoVitrine').href = 'https://www.youtube.com';
+        $('explicaVitrine').textContent = 'Cole o link de um vídeo ou playlist do YouTube. O vídeo toca aqui dentro, pelo player do próprio YouTube.';
+        $('linkVitrine').placeholder = 'https://youtu.be/...';
+      } else {
+        $('tituloVitrine').textContent = 'Spotify';
+        $('creditoVitrine').textContent = 'open.spotify.com ↗';
+        $('creditoVitrine').href = 'https://open.spotify.com';
+        $('explicaVitrine').textContent = 'Cole o link de uma música, álbum ou playlist do Spotify. Sem login no Spotify neste navegador, toca uma prévia de 30 segundos; com login, a música inteira.';
+        $('linkVitrine').placeholder = 'https://open.spotify.com/...';
+      }
+      desenharVitrine();
+    }
+
     if (estacao === 'audius' && !$('resultadosAudius').children.length) carregarEmAlta();
     if (estacao === 'radio' && !$('resultadosRadio').children.length) carregarMaisOuvidasRadio();
   }
   ESTACOES.forEach(b => b.addEventListener('click', () => mostrarEstacao(b.dataset.estacao)));
+
+  // ---------- Vitrine (YouTube e Spotify) ----------
+  const Vitrine = window.Vitrine;
+  // links guardados: confere cada um de novo antes de usar (o que veio estranho é descartado)
+  let itensVitrine = (Array.isArray(ler('vitrine', [])) ? ler('vitrine', []) : []).filter(Vitrine.valido);
+  let itemVitrineAtual = null;
+  const avisoVitrine = t => { $('avisoVitrine').textContent = t || ''; };
+  const tiposPt = {
+    video: 'vídeo',
+    playlist: 'playlist',
+    track: 'música',
+    album: 'álbum',
+    artist: 'artista',
+    episode: 'episódio',
+    show: 'podcast'
+  };
+
+  async function abrirLinkVitrine() {
+    const texto = $('linkVitrine').value;
+    const link = Vitrine.lerLink(texto);
+    if (!link) {
+      avisoVitrine(estacao === 'spotify' ? 'Esse link não parece do Spotify.' : 'Esse link não parece do YouTube.');
+      return;
+    }
+    if (link.fonte !== estacao) {
+      mostrarEstacao(link.fonte);
+    }
+    avisoVitrine('Abrindo...');
+    const info = await Vitrine.buscarInfo(link);
+    const item = Vitrine.paraItem(link, info);
+    itensVitrine = itensVitrine.filter(x => x.id !== item.id);
+    itensVitrine.unshift(item);
+    if (itensVitrine.length > 50) itensVitrine.pop();
+    gravar('vitrine', itensVitrine);
+    desenharVitrine();
+    abrirNoPlayerVitrine(item);
+    $('linkVitrine').value = '';
+    avisoVitrine('');
+  }
+
+  $('abrirVitrine').onclick = abrirLinkVitrine;
+  $('linkVitrine').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); abrirLinkVitrine(); } });
+
+  function abrirNoPlayerVitrine(item) {
+    audio.pause();
+    itemVitrineAtual = item;
+    const painel = $('playerVitrine');
+    painel.textContent = '';
+    const iframe = document.createElement('iframe');
+    iframe.src = Vitrine.enderecoDoPlayer(item);
+    iframe.title = item.titulo || 'Vitrine';
+    iframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
+    iframe.setAttribute('allowfullscreen', '');
+    iframe.loading = 'lazy';
+    iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+
+    const altura = Vitrine.alturaDoPlayer(item);
+    if (altura) {
+      iframe.style.height = altura + 'px';
+    } else {
+      iframe.className = 'player-video';
+    }
+    painel.append(iframe);
+    desenharVitrine();
+  }
+
+  function desenharVitrine() {
+    const ol = $('listaVitrine');
+    ol.textContent = '';
+    const filtrados = itensVitrine.filter(i => i.fonte === estacao);
+    $('tituloLinksVitrine').hidden = !filtrados.length;   // sem links ainda: sem o título vazio
+    filtrados.forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'faixa' + (itemVitrineAtual && itemVitrineAtual.id === item.id ? ' atual' : '');
+
+      const capa = document.createElement('button');
+      capa.type = 'button';
+      capa.className = 'faixa-capa';
+      capa.setAttribute('aria-label', 'Abrir ' + item.titulo);
+      preencherCapa(capa, { titulo: item.titulo, capaUrl: item.capa });
+      capa.onclick = () => abrirNoPlayerVitrine(item);
+
+      const texto = document.createElement('button');
+      texto.type = 'button';
+      texto.className = 'faixa-texto';
+      const t = document.createElement('strong'); t.textContent = item.titulo;
+      const a = document.createElement('span');
+      const tipoStr = tiposPt[item.tipo] || item.tipo;
+      a.textContent = (item.autor ? item.autor + ' · ' : '') + tipoStr;
+      texto.append(t, a);
+      texto.onclick = () => abrirNoPlayerVitrine(item);
+
+      const tempo = document.createElement('span');
+      tempo.className = 'faixa-tempo';
+      tempo.textContent = '';
+
+      const tirar = document.createElement('button');
+      tirar.type = 'button';
+      tirar.className = 'botao-icone faixa-tirar';
+      tirar.title = 'Tirar da lista';
+      tirar.setAttribute('aria-label', 'Tirar ' + item.titulo + ' da lista');
+      tirar.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+      tirar.onclick = () => {
+        itensVitrine = itensVitrine.filter(x => x.id !== item.id);
+        gravar('vitrine', itensVitrine);
+        if (itemVitrineAtual && itemVitrineAtual.id === item.id) {
+          itemVitrineAtual = null;
+          $('playerVitrine').textContent = '';
+        }
+        desenharVitrine();
+        avisoVitrine(`"${item.titulo}" saiu da lista.`);
+      };
+
+      li.append(capa, texto, tempo, tirar);
+      ol.append(li);
+    });
+  }
 
   // ---------- Audius: buscar e tocar músicas inteiras, grátis ----------
   const avisoAudius = t => { $('avisoAudius').textContent = t || ''; };

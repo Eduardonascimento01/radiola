@@ -34,8 +34,8 @@
       <button class="estacao ativa" type="button" data-estacao="arquivos" aria-pressed="true">Meus arquivos</button>
       <button class="estacao" type="button" data-estacao="audius" aria-pressed="false">Audius</button>
       <button class="estacao" type="button" data-estacao="radio" aria-pressed="false">Rádio</button>
-      <button class="estacao" type="button" disabled title="Chega na etapa 5">YouTube</button>
-      <button class="estacao" type="button" disabled title="Chega na etapa 5">Spotify</button>
+      <button class="estacao" type="button" data-estacao="youtube" aria-pressed="false">YouTube</button>
+      <button class="estacao" type="button" data-estacao="spotify" aria-pressed="false">Spotify</button>
     </div>
   </nav>
 
@@ -118,6 +118,22 @@
       <ol class="lista" id="resultadosRadio"></ol>
     </section>
 
+    <section class="estacao-painel" id="painelVitrine" aria-label="Vitrine" hidden>
+      <div class="fila-topo">
+        <h2 id="tituloVitrine">YouTube</h2>
+        <a class="credito" id="creditoVitrine" href="https://www.youtube.com" target="_blank" rel="noopener">youtube.com ↗</a>
+      </div>
+      <p id="explicaVitrine">Cole o link de um vídeo ou playlist do YouTube. O vídeo toca aqui dentro, pelo player do próprio YouTube.</p>
+      <div class="busca">
+        <input type="url" id="linkVitrine" placeholder="https://youtu.be/..." aria-label="Link do YouTube ou Spotify" enterkeyhint="go" autocomplete="off" inputmode="url">
+        <button class="botao-principal" type="button" id="abrirVitrine">Abrir</button>
+      </div>
+      <p class="aviso" id="avisoVitrine" role="status" aria-live="polite"></p>
+      <div id="playerVitrine"></div>
+      <h3 id="tituloLinksVitrine">Seus links</h3>
+      <ol class="lista" id="listaVitrine"></ol>
+    </section>
+
     <section class="fila" aria-label="Sua fila">
       <div class="fila-topo">
         <h2>Sua fila <span id="contagem"></span></h2>
@@ -169,6 +185,7 @@
   <script src="banco.js"></script>
   <script src="audius.js"></script>
   <script src="radio.js"></script>
+  <script src="vitrine.js"></script>
   <script src="colecao.js"></script>
   <script src="app.js"></script>
 </body>

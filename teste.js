@@ -143,6 +143,89 @@ teste('Rádio: juntar a busca por nome e por estilo sem perder nada (e sem repet
 });
 
 const C = require('./colecao.js');
+const V = require('./vitrine.js');
+
+teste('Vitrine: endereço parecido não engana e item guardado é conferido', () => {
+  assert.strictEqual(V.lerLink('https://youtube.com.site-falso.net/watch?v=dQw4w9WgXcQ'), null);
+  assert.strictEqual(V.lerLink('https://notyoutube.com/watch?v=dQw4w9WgXcQ'), null);
+  assert.strictEqual(V.lerLink('https://open.spotify.com.falso.net/track/4u7EnebtmKWzUH433cf5Qv'), null);
+  assert.ok(V.valido({ id: 'x', fonte: 'youtube', tipo: 'video', codigo: 'dQw4w9WgXcQ', lista: null }));
+  assert.ok(!V.valido({ id: 'x', fonte: 'youtube', tipo: 'video', codigo: '../../evil' }));
+  assert.ok(!V.valido({ id: 'x', fonte: 'spotify', tipo: 'track', codigo: 'x"><script>' }));
+  assert.ok(!V.valido(null));
+});
+
+teste('Vitrine: lê links do YouTube e do Spotify', () => {
+  const r1 = V.lerLink(' https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG ');
+  assert.deepStrictEqual(r1, {
+    fonte: 'youtube',
+    tipo: 'video',
+    codigo: 'dQw4w9WgXcQ',
+    lista: 'PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG'
+  });
+
+  assert.deepStrictEqual(V.lerLink('https://youtu.be/dQw4w9WgXcQ'), {
+    fonte: 'youtube',
+    tipo: 'video',
+    codigo: 'dQw4w9WgXcQ',
+    lista: null
+  });
+
+  assert.deepStrictEqual(V.lerLink('https://www.youtube.com/shorts/dQw4w9WgXcQ'), {
+    fonte: 'youtube',
+    tipo: 'video',
+    codigo: 'dQw4w9WgXcQ',
+    lista: null
+  });
+
+  assert.deepStrictEqual(V.lerLink('https://music.youtube.com/watch?v=dQw4w9WgXcQ'), {
+    fonte: 'youtube',
+    tipo: 'video',
+    codigo: 'dQw4w9WgXcQ',
+    lista: null
+  });
+
+  assert.deepStrictEqual(V.lerLink('https://www.youtube.com/playlist?list=PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG'), {
+    fonte: 'youtube',
+    tipo: 'playlist',
+    codigo: 'PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG',
+    lista: null
+  });
+
+  assert.deepStrictEqual(V.lerLink('https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv?si=abc'), {
+    fonte: 'spotify',
+    tipo: 'track',
+    codigo: '4u7EnebtmKWzUH433cf5Qv',
+    lista: null
+  });
+
+  assert.deepStrictEqual(V.lerLink('https://open.spotify.com/intl-pt/album/1GbtB4zTqAsyfZEsm1RZfx'), {
+    fonte: 'spotify',
+    tipo: 'album',
+    codigo: '1GbtB4zTqAsyfZEsm1RZfx',
+    lista: null
+  });
+
+  assert.deepStrictEqual(V.lerLink('spotify:playlist:37i9dQZF1DXcBWIGoYBM5M'), {
+    fonte: 'spotify',
+    tipo: 'playlist',
+    codigo: '37i9dQZF1DXcBWIGoYBM5M',
+    lista: null
+  });
+
+  assert.strictEqual(V.lerLink('oi'), null);
+  assert.strictEqual(V.lerLink('https://example.com/watch?v=dQw4w9WgXcQ'), null);
+  assert.strictEqual(V.lerLink('https://youtu.be/curto'), null);
+  assert.strictEqual(V.lerLink('https://open.spotify.com/track/123'), null);
+  assert.strictEqual(V.lerLink('javascript:alert(1)'), null);
+
+  const itemVideoComLista = { fonte: 'youtube', tipo: 'video', codigo: 'dQw4w9WgXcQ', lista: 'PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG' };
+  assert.strictEqual(V.enderecoDoPlayer(itemVideoComLista), 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?list=PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG');
+
+  const itemAlbumSpotify = { fonte: 'spotify', tipo: 'album', codigo: '1GbtB4zTqAsyfZEsm1RZfx', lista: null };
+  assert.strictEqual(V.enderecoDoPlayer(itemAlbumSpotify), 'https://open.spotify.com/embed/album/1GbtB4zTqAsyfZEsm1RZfx');
+});
+
 teste('coleção: criar playlist (nome limpo, sem repetir)', () => {
   const pls = [];
   assert.strictEqual(C.criar(pls, '   '), null);
