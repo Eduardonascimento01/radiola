@@ -3,12 +3,19 @@
 (function () {
   'use strict';
 
-  const N = window.Nucleo, B = window.Banco;
+  const N = window.Nucleo, B = window.Banco, X = window.Extras;
   const $ = id => document.getElementById(id);
   const ler = (k, padrao) => { try { const v = localStorage.getItem('radiola:' + k); return v === null ? padrao : JSON.parse(v); } catch { return padrao; } };
   const gravar = (k, v) => { try { localStorage.setItem('radiola:' + k, JSON.stringify(v)); } catch { } };
 
   // ---------- estado ----------
+  let timerSegundos = 0;
+  let timerInterval = null;
+  let timerFimMusica = false;
+  let volumeAntesDoTimer = 1;
+  let timerDiminuindo = false;
+  let volumeAntesDoMudo = 1;
+  let mudo = false;
   // musicas = a fila na ordem que aparece na tela
   // ordem   = a ordem de tocar (igual à da tela, ou embaralhada no aleatório)
   // pos     = em que lugar da "ordem" estamos
@@ -92,19 +99,25 @@
     $('contagem').textContent = musicas.length ? `(${musicas.length})` : '';
   }
 
+  // a capa do disco fica SEM crossOrigin: imagem de site sem permissão (CORS), como logo de rádio,
+  // deixaria de aparecer. Para ler a cor, usamos uma CÓPIA da imagem (atualizarCorCapa).
+  const capaEl = $('capa');
+  capaEl.onload = atualizarCorCapa;
+
   function desenharTocando() {
     if (radio) {
       $('titulo').textContent = radio.nome;
       $('artista').textContent = 'Rádio ao vivo' + (radio.generos.length ? ' · ' + radio.generos.join(', ') : '');
       const url = radio.capaUrl;
       $('capa').hidden = !url;
-      $('capa').onerror = () => { $('capa').hidden = true; };
+      $('capa').onerror = () => { $('capa').hidden = true; atualizarCorCapa(); };
       if (url) $('capa').src = url; else $('capa').removeAttribute('src');
       document.title = `${radio.nome} · Radiola`;
       marcarAtual();
       contarAoCelularRadio(radio);
       if (typeof desenharAcoes === 'function') desenharAcoes();
       desenharBotoes();
+      atualizarCorCapa();
       return;
     }
     const m = atual();
@@ -114,13 +127,14 @@
     const url = urlDaCapa(m);
     $('capa').hidden = !url;
     // capa da internet que não carregou (sem rede, imagem apagada): esconde em vez de mostrar "imagem quebrada"
-    $('capa').onerror = () => { $('capa').hidden = true; };
+    $('capa').onerror = () => { $('capa').hidden = true; atualizarCorCapa(); };
     if (url) $('capa').src = url; else $('capa').removeAttribute('src');
     document.title = m ? `${m.titulo} · Radiola` : 'Radiola';
     marcarAtual();
     contarAoCelular(m, url);
     if (typeof desenharAcoes === 'function') desenharAcoes();
     desenharBotoes();
+    atualizarCorCapa();
   }
 
   function marcarAtual() {
@@ -371,7 +385,7 @@
 
   const vol = $('volume');
   vol.value = audio.volume; encher(vol);
-  vol.addEventListener('input', () => { audio.volume = +vol.value; encher(vol); gravar('volume', audio.volume); });
+  vol.addEventListener('input', () => { mudo = false; audio.volume = +vol.value; encher(vol); gravar('volume', audio.volume); });
 
   // tema: automático (segue o aparelho) -> claro -> escuro
   $('tema').onclick = () => {
@@ -379,8 +393,122 @@
     const prox = { '': 'claro', claro: 'escuro', escuro: '' }[raiz.dataset.tema || ''];
     if (prox) raiz.dataset.tema = prox; else delete raiz.dataset.tema;
     try { if (!prox) localStorage.removeItem('radiola:tema'); else localStorage.setItem('radiola:tema', prox); } catch { }
+    atualizarCorCapa();
     aviso({ '': 'Tema automático (igual ao do aparelho).', claro: 'Tema claro.', escuro: 'Tema escuro.' }[prox]);
+    atualizarCorCapa();   // a cor da capa precisa de outro contraste no tema novo
   };
+
+  // ---------- Cores pela capa ----------
+  // Cor de destaque tirada da capa. Lê os pixels de uma CÓPIA da imagem pedida com permissão (crossOrigin):
+  // se o site da imagem não deixar, só a cor fica a âmbar de sempre (a capa continua aparecendo).
+  let pedidoCor = 0;
+  function atualizarCorCapa() {
+    const img = $('capa');
+    const raizEl = document.documentElement;
+    const limpar = () => { raizEl.style.removeProperty('--ambar'); raizEl.style.removeProperty('--ambar-luz'); };
+    if (radio || !img.getAttribute('src') || img.hidden) { limpar(); return; }
+    const meu = ++pedidoCor;   // trocou de música antes da cópia carregar? a resposta velha é ignorada
+    const copia = new Image();
+    copia.crossOrigin = 'anonymous';
+    copia.onerror = () => { if (meu === pedidoCor) limpar(); };
+    copia.onload = () => {
+      if (meu !== pedidoCor) return;
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 24; canvas.height = 24;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(copia, 0, 0, 24, 24);
+        const cor = X.corDaCapa(ctx.getImageData(0, 0, 24, 24).data);
+        if (!cor) { limpar(); return; }
+        const escuro = raizEl.dataset.tema === 'escuro' || (raizEl.dataset.tema !== 'claro' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        const c = X.ajustarContraste(cor, escuro);
+        raizEl.style.setProperty('--ambar', `rgb(${c.r}, ${c.g}, ${c.b})`);
+        const luz = v => Math.min(255, Math.round(v + (255 - v) * 0.3));
+        raizEl.style.setProperty('--ambar-luz', `rgb(${luz(c.r)}, ${luz(c.g)}, ${luz(c.b)})`);
+      } catch { limpar(); }
+    };
+    copia.src = img.src;
+  }
+
+  // ---------- Timer para desligar ----------
+  function atualizarBotaoTimer() {
+    const btn = $('timer');
+    const ativo = timerSegundos > 0 || timerFimMusica;
+    btn.setAttribute('aria-pressed', String(ativo));
+    btn.querySelector('span').textContent = timerFimMusica ? 'Timer (Fim)' : (timerSegundos > 0 ? 'Timer ' + X.formatarTimer(timerSegundos) : 'Timer');
+  }
+
+  function iniciarTimerInterval() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      if (timerSegundos > 0) {
+        timerSegundos--;
+        if (timerSegundos <= 10 && !timerDiminuindo) {
+          timerDiminuindo = true;
+          volumeAntesDoTimer = audio.volume;
+        }
+        if (timerDiminuindo) {
+          audio.volume = Math.max(0, volumeAntesDoTimer * (timerSegundos / 10));
+        }
+        if (timerSegundos === 0) {
+          audio.pause();
+          audio.volume = volumeAntesDoTimer;
+          timerDiminuindo = false;
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+        atualizarBotaoTimer();
+      }
+    }, 1000);
+  }
+
+  $('timer').onclick = () => {
+    $('timerFimMusica').disabled = !!radio;
+    $('dialogoTimer').showModal();
+  };
+  $('fecharDialogoTimer').onclick = () => $('dialogoTimer').close();
+  $('dialogoTimer').addEventListener('click', e => { if (e.target === $('dialogoTimer')) $('dialogoTimer').close(); });
+
+  document.querySelectorAll('#listaTimer button[data-min]').forEach(b => {
+    b.onclick = () => {
+      const min = +b.dataset.min;
+      timerSegundos = min * 60;
+      timerFimMusica = false;
+      timerDiminuindo = false;
+      iniciarTimerInterval();
+      $('dialogoTimer').close();
+      atualizarBotaoTimer();
+      aviso(`Timer ajustado para ${min} minuto(s).`);
+    };
+  });
+
+  $('timerFimMusica').onclick = () => {
+    if (radio) return;
+    timerFimMusica = true;
+    timerSegundos = 0;
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    $('dialogoTimer').close();
+    atualizarBotaoTimer();
+    aviso('Timer ajustado para o fim desta música.');
+  };
+
+  $('timerDesligar').onclick = () => {
+    timerSegundos = 0;
+    timerFimMusica = false;
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    if (timerDiminuindo) {
+      audio.volume = volumeAntesDoTimer;
+      timerDiminuindo = false;
+    }
+    $('dialogoTimer').close();
+    atualizarBotaoTimer();
+    aviso('Timer desligado.');
+  };
+
+  // ---------- Atalhos de teclado ----------
+  $('abrirAtalhos').onclick = () => $('dialogoAtalhos').showModal();
+  $('fecharDialogoAtalhos').onclick = () => $('dialogoAtalhos').close();
+  $('dialogoAtalhos').addEventListener('click', e => { if (e.target === $('dialogoAtalhos')) $('dialogoAtalhos').close(); });
 
   // ---------- o "aparelho" avisa o que está acontecendo ----------
   let ultimoGravado = 0;
@@ -400,7 +528,17 @@
     }
   });
   audio.addEventListener('pause', () => { document.body.classList.remove('tocando'); $('tocar').setAttribute('aria-label', 'Tocar'); if (!radio) gravar('tempo', audio.currentTime); });
-  audio.addEventListener('ended', () => { if (radio) return; proxima(false); });
+  audio.addEventListener('ended', () => {
+    if (radio) return;
+    if (timerFimMusica) {
+      audio.pause();
+      timerFimMusica = false;
+      atualizarBotaoTimer();
+      aviso('Timer: fim da música. Player pausado.');
+      return;
+    }
+    proxima(false);
+  });
   audio.addEventListener('error', () => {
     if (!audio.getAttribute('src')) return;
     if (radio) {
@@ -415,11 +553,48 @@
   // teclado (no computador): espaço = tocar/pausar; setas = 5 s; Shift+setas = trocar de música
   document.addEventListener('keydown', e => {
     if (e.target.closest('input, textarea, select') && e.target.type !== 'range') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;   // Ctrl+L, Ctrl+M... são do navegador, não da Radiola
     if (e.code === 'Space' && !e.target.closest('button')) { e.preventDefault(); tocarOuPausar(); }
-    else if (e.key === 'ArrowRight' && e.shiftKey) proxima(true);
-    else if (e.key === 'ArrowLeft' && e.shiftKey) anterior();
+    else if (e.key === 'ArrowRight' && e.shiftKey) { e.preventDefault(); proxima(true); }
+    else if (e.key === 'ArrowLeft' && e.shiftKey) { e.preventDefault(); anterior(); }
     else if (e.key === 'ArrowRight' && e.target.type !== 'range' && !radio) audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 5);
     else if (e.key === 'ArrowLeft' && e.target.type !== 'range' && !radio) audio.currentTime = Math.max(0, audio.currentTime - 5);
+    else if (e.key === 'm' || e.key === 'M') {
+      e.preventDefault();
+      if (!mudo) {
+        volumeAntesDoMudo = audio.volume;
+        audio.volume = 0;
+        mudo = true;
+      } else {
+        audio.volume = volumeAntesDoMudo || 1;
+        mudo = false;
+      }
+      vol.value = audio.volume;
+      encher(vol);   // (o mudo não é gravado: ao abrir de novo, volta o volume de antes)
+    }
+    else if (e.key === 'l' || e.key === 'L') {
+      e.preventDefault();
+      if (!radio && atual()) $('curtir').click();
+    }
+    else if (e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      audio.volume = Math.min(1, audio.volume + 0.1);
+      vol.value = audio.volume;
+      encher(vol);
+      gravar('volume', audio.volume);
+    }
+    else if (e.key === '-' || e.key === '_') {
+      e.preventDefault();
+      audio.volume = Math.max(0, audio.volume - 0.1);
+      vol.value = audio.volume;
+      encher(vol);
+      gravar('volume', audio.volume);
+    }
+    else if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+      e.preventDefault();
+      if ($('dialogoAtalhos').open) $('dialogoAtalhos').close();
+      else $('dialogoAtalhos').showModal();
+    }
   });
 
   // arrastar arquivos do computador para a página

@@ -322,4 +322,58 @@ teste('coleção: dado estragado não quebra', () => {
   assert.deepStrictEqual(C.arrumar([{ id: 'p', nome: 'Ok', ids: ['a', 3, null] }]), [{ id: 'p', nome: 'Ok', ids: ['a'], criado: 0 }]);
 });
 
+const X = require('./extras.js');
+teste('extras: corDaCapa', () => {
+  // Toda vermelha
+  const vermelho = new Uint8Array(24 * 24 * 4);
+  for (let i = 0; i < vermelho.length; i += 4) { vermelho[i] = 255; vermelho[i+3] = 255; }
+  const corV = X.corDaCapa(vermelho);
+  assert.ok(corV && corV.r > 240 && corV.g < 10 && corV.b < 10);
+
+  // Metade preta + metade azul
+  const meioAzul = new Uint8Array(24 * 24 * 4);
+  for (let i = 0; i < meioAzul.length; i += 8) {
+    // preto (soma < 60)
+    meioAzul[i] = 5; meioAzul[i+1] = 5; meioAzul[i+2] = 5; meioAzul[i+3] = 255;
+    // azul
+    meioAzul[i+4] = 20; meioAzul[i+5] = 40; meioAzul[i+6] = 240; meioAzul[i+7] = 255;
+  }
+  const corA = X.corDaCapa(meioAzul);
+  assert.ok(corA && corA.b > corA.r);
+
+  // Toda cinza ou branca
+  const cinza = new Uint8Array(24 * 24 * 4);
+  for (let i = 0; i < cinza.length; i += 4) { cinza[i] = 120; cinza[i+1] = 120; cinza[i+2] = 120; cinza[i+3] = 255; }
+  assert.strictEqual(X.corDaCapa(cinza), null);
+
+  // Pixels transparentes ignorados
+  const trans = new Uint8Array(24 * 24 * 4);
+  assert.strictEqual(X.corDaCapa(trans), null);
+});
+
+teste('extras: ajustarContraste', () => {
+  // Azul escuro no tema escuro (escuro = true) deve ter luminância >= 0.45
+  const azulEscuro = { r: 10, g: 10, b: 150 };
+  const ajustadoEscuro = X.ajustarContraste(azulEscuro, true);
+  assert.ok(X.luminancia(ajustadoEscuro) >= 0.45);
+
+  // Amarelo claro no tema claro (escuro = false) deve ter luminância <= 0.45
+  const amareloClaro = { r: 255, g: 255, b: 200 };
+  const ajustadoClaro = X.ajustarContraste(amareloClaro, false);
+  assert.ok(X.luminancia(ajustadoClaro) <= 0.45);
+});
+
+teste('extras: formatarTimer', () => {
+  assert.strictEqual(X.formatarTimer(75), '1:15');
+  assert.strictEqual(X.formatarTimer(3665), '1:01:05');
+});
+
+teste('extras: capa com duas cores fortes não vira cinza (fica a que domina)', () => {
+  const px = [];
+  for (let i = 0; i < 200; i++) px.push(30, 110, 220, 255);   // azul
+  for (let i = 0; i < 300; i++) px.push(230, 120, 40, 255);   // laranja (mais)
+  for (let i = 0; i < 400; i++) px.push(120, 100, 90, 255);   // fundo marrom apagado (muito, mas fraco)
+  assert.deepStrictEqual(X.corDaCapa(px), { r: 230, g: 120, b: 40 });
+});
+
 console.log(`\n${ok} testes passaram.`);

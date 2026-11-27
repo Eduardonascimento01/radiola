@@ -378,3 +378,19 @@ input[type="range"]::-moz-range-thumb {
   .faixa-capa { width: 40px; height: 40px; }
   .estacao { font-size: .82rem; padding: 6px 10px; }
 }
+
+/* atalhos e rodape player */
+.tabela-atalhos { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: .92rem; }
+.tabela-atalhos td { padding: 6px 4px; border-bottom: 1px solid var(--borda); }
+.tabela-atalhos tr:last-child td { border-bottom: 0; }
+.tabela-atalhos kbd {
+  background: var(--fundo); border: 1px solid var(--borda); border-radius: 4px; padding: 2px 6px; font-family: monospace; font-size: .85rem;
+}
+.link-atalhos { background: none; border: 0; color: var(--suave); font-size: .85rem; text-decoration: underline; cursor: pointer; padding: 0; }
+@media (hover: hover) and (pointer: fine) {
+  .link-atalhos:hover { color: var(--ambar); }
+}
+.rodape-player { text-align: center; margin-top: 10px; }
+@media (hover: none), (pointer: coarse) {
+  .link-atalhos { display: none; }
+}

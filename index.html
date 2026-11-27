@@ -52,6 +52,7 @@
       <div class="acoes-musica">
         <button id="curtir" class="botao-acao" type="button" aria-pressed="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-9.2-8.6C1.2 8.3 3 5 6.3 5c2 0 3.2 1.1 3.7 2.1.5-1 1.7-2.1 3.7-2.1C17 5 18.8 8.3 17.2 11.4 15 15.6 12 20 12 20z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" transform="translate(1.5 0)"/></svg><span>Curtir</span></button>
         <button id="porNaPlaylist" class="botao-acao" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h11M4 11h11M4 16h7M18 13v8M14 17h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Playlist</span></button>
+        <button id="timer" class="botao-acao" type="button" aria-pressed="false" title="Timer para desligar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm1-13h-2v6l5 3 .75-1.23-4.25-2.52z" fill="currentColor"/></svg><span>Timer</span></button>
       </div>
 
       <div class="barra">
@@ -84,6 +85,9 @@
         <span class="sr">Volume</span>
         <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
       </label>
+      <div class="rodape-player">
+        <button type="button" id="abrirAtalhos" class="link-atalhos">Atalhos do teclado</button>
+      </div>
     </section>
 
     <div class="coluna">
@@ -198,8 +202,42 @@
     </div>
   </dialog>
 
+  <!-- janelinha "Timer para desligar" -->
+  <dialog class="dialogo" id="dialogoTimer" aria-labelledby="tituloTimer">
+    <div class="dialogo-topo">
+      <h2 id="tituloTimer">Timer para desligar</h2>
+      <button class="botao-icone" type="button" id="fecharDialogoTimer" aria-label="Fechar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+    </div>
+    <ul class="dialogo-lista" id="listaTimer" style="margin-top: 12px;">
+      <li><button type="button" data-min="15"><span>15 minutos</span><span></span></button></li>
+      <li><button type="button" data-min="30"><span>30 minutos</span><span></span></button></li>
+      <li><button type="button" data-min="45"><span>45 minutos</span><span></span></button></li>
+      <li><button type="button" data-min="60"><span>1 hora</span><span></span></button></li>
+      <li><button type="button" id="timerFimMusica"><span>No fim desta música</span><span></span></button></li>
+      <li><button type="button" id="timerDesligar" class="link-perigo" style="justify-content: center; width: 100%;"><span>Desligar timer</span><span></span></button></li>
+    </ul>
+  </dialog>
+
+  <!-- janelinha "Atalhos do teclado" -->
+  <dialog class="dialogo" id="dialogoAtalhos" aria-labelledby="tituloAtalhos">
+    <div class="dialogo-topo">
+      <h2 id="tituloAtalhos">Atalhos do teclado</h2>
+      <button class="botao-icone" type="button" id="fecharDialogoAtalhos" aria-label="Fechar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+    </div>
+    <table class="tabela-atalhos">
+      <tr><td><kbd>Espaço</kbd></td><td>Tocar / Pausar</td></tr>
+      <tr><td><kbd>→</kbd> / <kbd>←</kbd></td><td>Avançar / Voltar 5 segundos</td></tr>
+      <tr><td><kbd>Shift</kbd> + <kbd>→</kbd> / <kbd>←</kbd></td><td>Próxima / Anterior música</td></tr>
+      <tr><td><kbd>M</kbd></td><td>Mudo liga / desliga</td></tr>
+      <tr><td><kbd>L</kbd></td><td>Curtir / Descurtir</td></tr>
+      <tr><td><kbd>+</kbd> / <kbd>-</kbd></td><td>Volume sobe / desce 10%</td></tr>
+      <tr><td><kbd>?</kbd></td><td>Abrir esta janela de atalhos</td></tr>
+    </table>
+  </dialog>
+
   <div class="soltar" id="soltar" hidden><p>Solte as músicas aqui</p></div>
 
+  <script src="extras.js"></script>
   <script src="nucleo.js"></script>
   <script src="banco.js"></script>
   <script src="audius.js"></script>
