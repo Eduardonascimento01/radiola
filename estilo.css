@@ -13,6 +13,7 @@
   --sobre-ambar: #fff;
   --disco: #1d1714;
   --sombra: 0 10px 30px rgba(60, 35, 15, .12);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -49,10 +50,11 @@
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--fundo);
   color: var(--texto);
   font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -60,7 +62,7 @@ body {
   overflow-x: hidden;
 }
 button, input, label { font: inherit; color: inherit; }
-button { cursor: pointer; }
+button, .botao-principal { cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
 svg { width: 24px; height: 24px; display: block; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
@@ -78,9 +80,14 @@ svg { width: 24px; height: 24px; display: block; }
   width: 44px; height: 44px; border-radius: 50%;
   display: grid; place-items: center;
   background: transparent; border: 0; color: var(--suave);
-  transition: color .15s, background .15s;
+  transition: color 150ms ease, background-color 150ms ease, transform 160ms var(--ease-out);
 }
-.botao-icone:hover { background: color-mix(in srgb, var(--ambar) 12%, transparent); color: var(--texto); }
+@media (hover: hover) and (pointer: fine) {
+  .botao-icone:hover { background: color-mix(in srgb, var(--ambar) 12%, transparent); color: var(--texto); }
+  .faixa:hover { background: color-mix(in srgb, var(--ambar) 7%, transparent); }
+  .botao-principal:hover { filter: brightness(1.05); }
+}
+.botao-icone:active, .estacao:not(:disabled):active, .botao-principal:active { transform: scale(0.95); }
 .botao-icone[aria-pressed="true"], .botao-icone.ligado { color: var(--ambar); }
 .botao-icone .marca-um {
   position: absolute; right: 6px; bottom: 6px;
@@ -188,6 +195,7 @@ input[type="range"]::-moz-range-thumb {
   width: 64px; height: 64px; border-radius: 50%; border: 0;
   background: var(--ambar); color: var(--sobre-ambar);
   display: grid; place-items: center; box-shadow: 0 6px 16px color-mix(in srgb, var(--ambar) 40%, transparent);
+  transition: transform 160ms var(--ease-out);
 }
 .botao-tocar svg { width: 30px; height: 30px; }
 .botao-tocar:active { transform: scale(.96); }
@@ -203,11 +211,11 @@ input[type="range"]::-moz-range-thumb {
 .fila-topo h2 { margin: 0; font: 700 1.25rem/1.2 Georgia, serif; }
 #contagem { color: var(--suave); font: 400 .95rem system-ui, sans-serif; }
 .botao-principal {
+  transition: transform 160ms var(--ease-out), filter 150ms ease;
   display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px;
   border-radius: 999px; background: var(--ambar); color: var(--sobre-ambar);
   font-weight: 600; cursor: pointer; user-select: none;
 }
-.botao-principal:hover { filter: brightness(1.05); }
 .aviso { min-height: 1.2em; margin: 8px 0 4px; color: var(--suave); font-size: .9rem; }
 .aviso:empty { margin: 4px 0 0; min-height: 0; }
 
@@ -216,7 +224,6 @@ input[type="range"]::-moz-range-thumb {
   display: grid; grid-template-columns: 44px minmax(0, 1fr) auto 40px; align-items: center; gap: 10px;
   padding: 6px 6px 6px 4px; border-radius: 12px;
 }
-.faixa:hover { background: color-mix(in srgb, var(--ambar) 7%, transparent); }
 .faixa.atual { background: color-mix(in srgb, var(--ambar) 14%, transparent); }
 .faixa-capa {
   width: 44px; height: 44px; border-radius: 8px; overflow: hidden; border: 0; padding: 0;

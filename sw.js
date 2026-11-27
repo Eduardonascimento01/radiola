@@ -2,7 +2,7 @@
 // para ele abrir mesmo sem internet (as suas músicas já ficam no IndexedDB).
 // Estratégia: tenta a internet primeiro (assim você recebe as atualizações);
 // sem internet, usa a cópia guardada.
-const CACHE = 'radiola-v1';
+const CACHE = 'radiola-v2';
 const ARQUIVOS = ['./', 'index.html', 'estilo.css', 'nucleo.js', 'banco.js', 'app.js',
   'icone.svg', 'icone-192.png', 'icone-512.png', 'manifest.webmanifest'];
 
