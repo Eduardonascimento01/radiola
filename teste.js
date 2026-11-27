@@ -144,6 +144,66 @@ teste('Rádio: juntar a busca por nome e por estilo sem perder nada (e sem repet
 
 const C = require('./colecao.js');
 const V = require('./vitrine.js');
+const I = require('./importar.js');
+
+teste('Importar: CSV do Exportify (o artista é o nome, não o código URI)', () => {
+  const csv = ['"Track URI","Track Name","Artist URI(s)","Artist Name(s)","Album Name"',
+    '"spotify:track:1","Bohemian Rhapsody","spotify:artist:1dfeR4","Queen","A Night At The Opera"',
+    '"spotify:track:2","September","spotify:artist:4QQgXk","Earth, Wind & Fire","The Best Of"'].join('\n');
+  const { itens } = I.lerEntrada(csv);
+  assert.deepStrictEqual(itens.map(i => [i.titulo, i.artista]), [['Bohemian Rhapsody', 'Queen'], ['September', 'Earth, Wind & Fire']]);
+});
+
+teste('Importar: limparTitulo', () => {
+  assert.strictEqual(I.limparTitulo('Bohemian Rhapsody - Remastered 2011'), 'Bohemian Rhapsody');
+  assert.strictEqual(I.limparTitulo('Song (feat. X) [Official Video]'), 'Song');
+});
+
+teste('Importar: separarYoutube', () => {
+  const s = I.separarYoutube('Queen - Bohemian Rhapsody (Official Video Remastered)', 'Queen Official');
+  assert.strictEqual(s.artista, 'Queen');
+  assert.strictEqual(s.musica, 'Bohemian Rhapsody');
+});
+
+teste('Importar: escolher', () => {
+  const procurado = { titulo: 'Tempo Perdido', artista: 'Legião Urbana' };
+  const candidatos = [
+    { titulo: 'Outra Música', artista: 'Outro' },
+    { titulo: 'Tempo Perdido', artista: 'Legião Urbana' },
+    { titulo: 'Tempo', artista: 'Outro' }
+  ];
+  const escolhido = I.escolher(procurado, candidatos);
+  assert.strictEqual(escolhido.titulo, 'Tempo Perdido');
+
+  const ruim = I.escolher({ titulo: 'XYZABC123', artista: 'Ninguem' }, candidatos);
+  assert.strictEqual(ruim, null);
+});
+
+teste('Importar: lerEntrada (links, texto, CSV, avisos)', () => {
+  const texto = [
+    'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv',
+    'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv',
+    'https://youtu.be/dQw4w9WgXcQ',
+    'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M',
+    'Legião Urbana - Tempo Perdido',
+    '',
+  ].join('\n');
+
+  const res = I.lerEntrada(texto);
+  assert.strictEqual(res.itens.length, 3);
+  assert.strictEqual(res.avisos.length, 1);
+
+  const csvTexto = [
+    '"Track URI","Track Name","Artist Name(s)"',
+    '"spotify:track:1","Let\'s Groove","Earth, Wind & Fire"',
+    '"spotify:track:2","Song ""Quote""","Artist"'
+  ].join('\n');
+
+  const resCsv = I.lerEntrada(csvTexto);
+  assert.strictEqual(resCsv.itens.length, 2);
+  assert.strictEqual(resCsv.itens[0].titulo, "Let's Groove");
+  assert.strictEqual(resCsv.itens[0].artista, "Earth, Wind & Fire");
+});
 
 teste('Vitrine: endereço parecido não engana e item guardado é conferido', () => {
   assert.strictEqual(V.lerLink('https://youtube.com.site-falso.net/watch?v=dQw4w9WgXcQ'), null);

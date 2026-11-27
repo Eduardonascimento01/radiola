@@ -365,6 +365,13 @@ input[type="range"]::-moz-range-thumb {
 #playerVitrine:not(:empty) { margin: 14px 0; }
 #explicaVitrine { color: var(--suave); font-size: .9rem; margin: 6px 0 12px; }
 
+/* importar lista */
+.bloco-importar { border-top: 1px solid var(--borda); margin-top: 12px; padding-top: 12px; }
+.explica-importar { color: var(--suave); font-size: .9rem; margin: 0 0 10px; }
+.arquivo-linha { margin-bottom: 8px; }
+#textoImportar { width: 100%; border-radius: 12px; border: 1px solid var(--borda); background: var(--fundo); color: var(--texto); padding: 10px 14px; font: 16px/1.4 system-ui, sans-serif; resize: vertical; }
+.botoes-topo-colecao { display: flex; gap: 8px; flex-wrap: wrap; }
+
 @media (max-width: 420px) {
   .toca, .fila { padding: 14px; }
   .faixa { grid-template-columns: 40px minmax(0, 1fr) auto 36px; gap: 8px; }

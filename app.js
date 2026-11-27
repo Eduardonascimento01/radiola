@@ -776,6 +776,210 @@
   }
 
 
+  // ---------- Importar lista ----------
+  const Importar = window.Importar;
+  let importando = false;
+  let pararImportacao = false;
+  let resultadosImportacao = [];
+  const avisoImportar = t => { $('avisoImportar').textContent = t || ''; };
+
+  $('abrirImportar').onclick = () => {
+    const bloco = $('blocoImportar');
+    bloco.hidden = !bloco.hidden;
+    if (!bloco.hidden) {
+      const hoje = new Date();
+      const dd = String(hoje.getDate()).padStart(2, '0');
+      const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+      $('nomeImportada').value = 'Importada ' + dd + '/' + mm;
+      $('textoImportar').focus();
+    }
+  };
+
+  $('arquivoImportar').onchange = e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      $('textoImportar').value = ev.target.result;
+      avisoImportar(`Arquivo "${f.name}" carregado.`);
+    };
+    reader.readAsText(f);
+    e.target.value = '';
+  };
+
+  async function executarImportacao() {
+    const texto = $('textoImportar').value;
+    const { itens, avisos } = Importar.lerEntrada(texto);
+    if (!itens.length) {
+      avisoImportar(avisos[0] || 'Cole links ou músicas na caixa.');
+      return;
+    }
+    // aviso (ex: um link de playlist inteira no meio) NÃO cancela: as outras músicas seguem
+    const avisoInicial = avisos.join(' ');
+
+    importando = true;
+    pararImportacao = false;
+    resultadosImportacao = [];
+    $('lerImportar').hidden = true;
+    $('pararImportar').hidden = false;
+    $('salvarImportar').hidden = true;
+
+    const ol = $('resultadoImportar');
+    ol.textContent = '';
+
+    for (let i = 0; i < itens.length; i++) {
+      if (pararImportacao) break;
+      const item = itens[i];
+      avisoImportar(`Procurando ${i + 1} de ${itens.length}: ${item.titulo || (item.link ? item.link.codigo : 'música')}`);
+
+      if (item.link) {
+        await Importar.completar(item);
+      }
+
+      const musicaAudius = await Importar.procurarNoAudius(item);
+      resultadosImportacao.push({ item, musicaAudius });
+      desenharResultadosImportar();
+
+      if (i < itens.length - 1 && !pararImportacao) {
+        await new Promise(r => setTimeout(r, 300));
+      }
+    }
+
+    importando = false;
+    $('lerImportar').hidden = false;
+    $('pararImportar').hidden = true;
+    $('salvarImportar').hidden = false;
+    const achou = resultadosImportacao.filter(r => r.musicaAudius).length;
+    avisoImportar(`Busca concluída: achei ${achou} de ${resultadosImportacao.length} no Audius. Revise abaixo e crie a playlist.`
+      + (avisoInicial ? ' Atenção: ' + avisoInicial : ''));
+  }
+
+  $('lerImportar').onclick = executarImportacao;
+  $('pararImportar').onclick = () => { pararImportacao = true; };
+
+  function desenharResultadosImportar() {
+    const ol = $('resultadoImportar');
+    ol.textContent = '';
+    resultadosImportacao.forEach((res) => {
+      const li = document.createElement('li');
+      li.className = 'faixa';
+
+      const capa = document.createElement('button');
+      capa.type = 'button';
+      capa.className = 'faixa-capa';
+      if (res.musicaAudius) {
+        preencherCapa(capa, res.musicaAudius);
+        capa.onclick = () => adicionarAudius(res.musicaAudius, true);
+        capa.setAttribute('aria-label', 'Tocar ' + res.musicaAudius.titulo);
+      } else {
+        capa.textContent = (res.item.titulo || '?').charAt(0).toUpperCase();
+        capa.disabled = true;
+      }
+
+      const texto = document.createElement('button');
+      texto.type = 'button';
+      texto.className = 'faixa-texto';
+      const t = document.createElement('strong');
+      t.textContent = res.item.titulo || (res.item.link ? res.item.link.codigo : 'Música');
+      const a = document.createElement('span');
+      if (res.musicaAudius) {
+        // sem o artista na lista (o Spotify não informa), o Audius pode ter achado a versão de outra pessoa
+        const confira = res.item.artista ? '' : ' (confira: pode ser outra versão)';
+        a.textContent = `✓ No Audius: ${res.musicaAudius.titulo} · ${res.musicaAudius.artista || 'Artista'}${confira}`;
+      } else {
+        a.textContent = 'Não achei no Audius';
+      }
+      texto.append(t, a);
+      if (res.musicaAudius) {
+        texto.onclick = () => adicionarAudius(res.musicaAudius, true);
+      } else {
+        texto.disabled = true;
+      }
+
+      const tempo = document.createElement('span');
+      tempo.className = 'faixa-tempo';
+      tempo.textContent = '';
+
+      const acao = document.createElement('button');
+      acao.type = 'button';
+      acao.className = 'botao-icone faixa-tirar';
+      if (res.musicaAudius) {
+        acao.title = 'Desmarcar escolha';
+        acao.setAttribute('aria-label', 'Desmarcar ' + res.item.titulo);
+        acao.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+        acao.onclick = () => {
+          res.musicaAudius = null;
+          desenharResultadosImportar();
+        };
+      } else {
+        acao.title = 'Não achada';
+        acao.setAttribute('aria-hidden', 'true');
+        acao.disabled = true;
+        acao.style.opacity = '0';
+      }
+
+      li.append(capa, texto, tempo, acao);
+      ol.append(li);
+    });
+  }
+
+  async function salvarImportacao() {
+    const nome = $('nomeImportada').value.trim() || 'Importada';
+    const pl = C.criar(playlists, nome);
+    if (!pl) {
+      avisoImportar('Nome de playlist inválido.');
+      return;
+    }
+
+    // nada para guardar (nada achado e nenhum link): não cria playlist vazia
+    const temAlgo = resultadosImportacao.some(r => r.musicaAudius || r.item.link);
+    if (!temAlgo) {
+      playlists.splice(playlists.indexOf(pl), 1);
+      avisoImportar('Nenhuma música foi achada no Audius e a lista não tinha links. Nada para guardar.');
+      return;
+    }
+
+    let achadas = 0;
+    let vitrineSalvos = 0;
+
+    for (const res of resultadosImportacao) {
+      if (res.musicaAudius) {
+        let m = res.musicaAudius;
+        if (biblioteca.has(m.id)) {
+          m = biblioteca.get(m.id);
+        } else {
+          try { await B.salvar(m); } catch {}
+          biblioteca.set(m.id, m);
+        }
+        C.por(pl.ids, m.id);
+        achadas++;
+      } else if (res.item.link) {
+        const info = { titulo: res.item.titulo || 'Link', autor: res.item.artista || '', capa: res.item.capa || null };
+        const vitItem = Vitrine.paraItem(res.item.link, info);
+        itensVitrine = itensVitrine.filter(x => x.id !== vitItem.id);
+        itensVitrine.unshift(vitItem);
+        vitrineSalvos++;
+      }
+    }
+
+    if (itensVitrine.length > 50) itensVitrine.length = 50;
+    gravar('vitrine', itensVitrine);
+    guardarColecao();
+    desenharColecao();
+    aberta = pl.id;
+    desenharColecao();
+
+    $('blocoImportar').hidden = true;
+    $('textoImportar').value = '';
+    $('resultadoImportar').textContent = '';
+    $('salvarImportar').hidden = true;
+
+    avisoColecao(`Playlist "${pl.nome}" criada: ${C.contar(achadas)} do Audius.`
+      + (vitrineSalvos ? ` ${vitrineSalvos} ${vitrineSalvos === 1 ? 'ficou' : 'ficaram'} em "Seus links" do Spotify/YouTube.` : ''));
+  }
+
+  $('salvarImportar').onclick = salvarImportacao;
+
   // ---------- sua coleção (etapa 3): curtidas, playlists e todas as músicas ----------
   // biblioteca = TODAS as músicas guardadas no aparelho (MP3 e Audius), pelo id.
   // A fila, as curtidas e as playlists são só listas de ids apontando para ela.
