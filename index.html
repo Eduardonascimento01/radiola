@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Radiola</title>
+  <meta name="description" content="Radiola: o seu aparelho de música. Toca as suas músicas e, nas próximas etapas, Audius, rádios e mais.">
+  <meta name="theme-color" content="#6b4226">
+  <link rel="icon" href="icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icone-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="estilo.css">
+  <script>
+    // aplica o tema antes de desenhar a tela (evita "piscar" de claro para escuro)
+    try { const t = localStorage.getItem('radiola:tema'); if (t) document.documentElement.dataset.tema = t; } catch { }
+  </script>
+</head>
+<body>
+  <header class="topo">
+    <div class="marca">
+      <img src="icone.svg" alt="" width="36" height="36">
+      <h1>Radiola</h1>
+    </div>
+    <button id="tema" class="botao-icone" type="button" aria-label="Trocar tema (automático, claro ou escuro)" title="Tema">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18V3z" fill="currentColor"/><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    </button>
+  </header>
+
+  <!-- O "dial" da radiola: escolhe de onde vem o som. As outras estações chegam nas próximas etapas. -->
+  <nav class="dial" aria-label="De onde vem o som">
+    <div class="dial-escala" aria-hidden="true"></div>
+    <div class="estacoes">
+      <button class="estacao ativa" type="button" aria-pressed="true">Meus arquivos</button>
+      <button class="estacao" type="button" disabled title="Chega na etapa 2">Audius</button>
+      <button class="estacao" type="button" disabled title="Chega na etapa 4">Rádio</button>
+      <button class="estacao" type="button" disabled title="Chega na etapa 5">YouTube</button>
+      <button class="estacao" type="button" disabled title="Chega na etapa 5">Spotify</button>
+    </div>
+  </nav>
+
+  <main class="palco">
+    <section class="toca" aria-label="Tocando agora">
+      <div class="disco" id="disco">
+        <div class="selo"><img id="capa" alt="" hidden></div>
+      </div>
+      <div class="info">
+        <p class="titulo" id="titulo">Nenhuma música tocando</p>
+        <p class="artista" id="artista">Adicione músicas do seu aparelho para começar</p>
+      </div>
+
+      <div class="barra">
+        <input type="range" id="progresso" min="0" max="0" step="0.1" value="0" aria-label="Posição da música">
+        <div class="tempos"><span id="tempoAtual">0:00</span><span id="tempoTotal">0:00</span></div>
+      </div>
+
+      <div class="controles">
+        <button id="aleatorio" class="botao-icone" type="button" aria-pressed="false" aria-label="Aleatório" title="Aleatório">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h3.5c2 0 3.2 1 4.3 2.6l2.4 4.8c1.1 1.6 2.3 2.6 4.3 2.6H21M3 17h3.5c1.4 0 2.4-.5 3.2-1.3M14.3 8.3C15.1 7.5 16.1 7 17.5 7H21M18 4l3 3-3 3M18 14l3 3-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button id="anterior" class="botao-icone" type="button" aria-label="Música anterior" title="Anterior">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 5l-10 7 10 7z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+        <button id="tocar" class="botao-tocar" type="button" aria-label="Tocar" title="Tocar (barra de espaço)">
+          <svg class="icone-tocar" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l12 7-12 7z" fill="currentColor"/></svg>
+          <svg class="icone-pausar" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg>
+        </button>
+        <button id="proxima" class="botao-icone" type="button" aria-label="Próxima música" title="Próxima">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14M5 5l10 7-10 7z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+        <button id="repetir" class="botao-icone" type="button" aria-label="Repetir: desligado" title="Repetir">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="marca-um" aria-hidden="true">1</span>
+        </button>
+      </div>
+
+      <label class="volume">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span class="sr">Volume</span>
+        <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+      </label>
+    </section>
+
+    <section class="fila" aria-label="Sua fila">
+      <div class="fila-topo">
+        <h2>Sua fila <span id="contagem"></span></h2>
+        <label class="botao-principal" for="arquivos">+ Adicionar músicas</label>
+        <input type="file" id="arquivos" accept="audio/*,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.webm" multiple hidden>
+      </div>
+      <p class="aviso" id="aviso" role="status" aria-live="polite"></p>
+      <ol class="lista" id="lista"></ol>
+      <div class="vazio" id="vazio">
+        <p><strong>A fila está vazia.</strong></p>
+        <p>Toque em <em>Adicionar músicas</em> e escolha arquivos do seu aparelho (MP3, M4A, OGG, WAV...). No computador, dá também para arrastar os arquivos para cá.</p>
+        <p class="dica">As músicas ficam guardadas só neste navegador. Nada é enviado para a internet.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="soltar" id="soltar" hidden><p>Solte as músicas aqui</p></div>
+
+  <script src="nucleo.js"></script>
+  <script src="banco.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

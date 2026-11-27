@@ -1,0 +1,257 @@
+/* estilo.css: o visual do Radiola. Cores de madeira e de luz âmbar do dial,
+   como uma radiola antiga. Tema claro e escuro pelas mesmas "variáveis". */
+:root {
+  --fundo: #f3eadd;
+  --cartao: #fffaf2;
+  --texto: #2b1d14;
+  --suave: #6f5847;
+  --borda: #e3d4c0;
+  --madeira: #6b4226;
+  --madeira-clara: #9a6a43;
+  --ambar: #c9741c;
+  --ambar-luz: #f2a541;
+  --sobre-ambar: #fff;
+  --disco: #1d1714;
+  --sombra: 0 10px 30px rgba(60, 35, 15, .12);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --fundo: #15100c;
+    --cartao: #221913;
+    --texto: #f3e7d6;
+    --suave: #b49d87;
+    --borda: #3a2b21;
+    --madeira: #3b2617;
+    --madeira-clara: #c58a55;
+    --ambar: #f2a541;
+    --ambar-luz: #ffc46b;
+    --sobre-ambar: #2b1a0c;
+    --disco: #0b0907;
+    --sombra: 0 10px 30px rgba(0, 0, 0, .45);
+    color-scheme: dark;
+  }
+}
+:root[data-tema="escuro"] {
+  --fundo: #15100c;
+  --cartao: #221913;
+  --texto: #f3e7d6;
+  --suave: #b49d87;
+  --borda: #3a2b21;
+  --madeira: #3b2617;
+  --madeira-clara: #c58a55;
+  --ambar: #f2a541;
+  --ambar-luz: #ffc46b;
+  --sobre-ambar: #2b1a0c;
+  --disco: #0b0907;
+  --sombra: 0 10px 30px rgba(0, 0, 0, .45);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--fundo);
+  color: var(--texto);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: 0 16px calc(24px + env(safe-area-inset-bottom));
+  overflow-x: hidden;
+}
+button, input, label { font: inherit; color: inherit; }
+button { cursor: pointer; }
+svg { width: 24px; height: 24px; display: block; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ---------- topo ---------- */
+.topo {
+  max-width: 1040px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0 10px;
+}
+.marca { display: flex; align-items: center; gap: 10px; }
+.marca h1 { margin: 0; font: 700 1.6rem/1 Georgia, "Times New Roman", serif; letter-spacing: .5px; }
+
+.botao-icone {
+  position: relative;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: transparent; border: 0; color: var(--suave);
+  transition: color .15s, background .15s;
+}
+.botao-icone:hover { background: color-mix(in srgb, var(--ambar) 12%, transparent); color: var(--texto); }
+.botao-icone[aria-pressed="true"], .botao-icone.ligado { color: var(--ambar); }
+.botao-icone .marca-um {
+  position: absolute; right: 6px; bottom: 6px;
+  font: 700 10px/14px system-ui; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--ambar); color: var(--sobre-ambar); display: none;
+}
+#repetir[data-modo="uma"] .marca-um { display: block; }
+button:focus-visible, label:focus-visible, input:focus-visible { outline: 3px solid var(--ambar-luz); outline-offset: 2px; }
+
+/* ---------- dial (de onde vem o som) ---------- */
+.dial {
+  max-width: 1040px; margin: 0 auto 16px;
+  background: linear-gradient(180deg, var(--madeira-clara), var(--madeira));
+  border-radius: 18px; padding: 10px 12px 12px;
+  box-shadow: var(--sombra);
+}
+.dial-escala {
+  height: 14px; margin: 0 4px 8px; border-radius: 4px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 230, 190, .55) 0 1px, transparent 1px 12px),
+    linear-gradient(180deg, #2a1a0f, #1a100a);
+  position: relative;
+}
+.dial-escala::after {      /* o ponteiro do dial, na primeira estação */
+  content: ""; position: absolute; top: -3px; bottom: -3px; left: 10%;
+  width: 3px; border-radius: 2px; background: var(--ambar-luz);
+  box-shadow: 0 0 8px var(--ambar-luz);
+}
+.estacoes {           /* numa linha só; no celular, arrasta para o lado DENTRO do dial */
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+  margin: 0 -4px; padding: 0 4px;
+}
+.estacoes::-webkit-scrollbar { display: none; }
+.estacao {
+  flex: 1 0 auto; white-space: nowrap; min-height: 36px; padding: 6px 12px;
+  border-radius: 999px; border: 1px solid rgba(255, 230, 190, .35);
+  background: rgba(0, 0, 0, .18); color: #f8e8d2; font-size: .9rem;
+}
+.estacao.ativa { background: var(--ambar-luz); color: #2b1a0c; border-color: transparent; font-weight: 600; }
+.estacao:disabled { opacity: .55; cursor: default; }
+
+/* ---------- palco: tocando + fila ---------- */
+.palco {
+  max-width: 1040px; margin: 0 auto;
+  display: grid; gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 860px) {
+  .palco { grid-template-columns: 380px minmax(0, 1fr); align-items: start; }
+  .toca { position: sticky; top: 16px; }
+}
+.toca, .fila {
+  background: var(--cartao); border: 1px solid var(--borda);
+  border-radius: 18px; box-shadow: var(--sombra); padding: 18px;
+  min-width: 0;
+}
+
+/* o disco gira enquanto toca; a capa fica no "selo" do meio */
+.disco {
+  width: min(220px, 46vw); aspect-ratio: 1; margin: 4px auto 14px; border-radius: 50%;
+  background:
+    radial-gradient(circle, transparent 0 34%, rgba(255, 255, 255, .06) 34.5% 35%, transparent 35.5%),
+    repeating-radial-gradient(circle, var(--disco) 0 2px, #2a221d 2px 3px);
+  display: grid; place-items: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+  animation: girar 4s linear infinite; animation-play-state: paused;
+}
+.tocando .disco { animation-play-state: running; }
+@keyframes girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .disco { animation: none; } }
+.selo {
+  width: 40%; aspect-ratio: 1; border-radius: 50%; overflow: hidden;
+  background: radial-gradient(circle, var(--disco) 0 6%, var(--ambar) 7% 100%);
+}
+.selo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.info { text-align: center; min-width: 0; }
+.titulo { margin: 0; font-weight: 700; font-size: 1.15rem; overflow-wrap: anywhere; }
+.artista { margin: 2px 0 0; color: var(--suave); overflow-wrap: anywhere; }
+
+.barra { margin: 14px 0 4px; }
+.tempos { display: flex; justify-content: space-between; font-size: .8rem; color: var(--suave); font-variant-numeric: tabular-nums; }
+
+input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; margin: 0;
+  --cheio: 0%;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--ambar) var(--cheio), var(--borda) var(--cheio));
+}
+input[type="range"]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--borda); }
+input[type="range"]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--ambar); }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px; border-radius: 50%;
+  background: var(--ambar); border: 3px solid var(--cartao); box-shadow: 0 1px 4px rgba(0, 0, 0, .3);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--ambar); border: 3px solid var(--cartao);
+}
+
+.controles { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 6px 0 10px; }
+.botao-tocar {
+  width: 64px; height: 64px; border-radius: 50%; border: 0;
+  background: var(--ambar); color: var(--sobre-ambar);
+  display: grid; place-items: center; box-shadow: 0 6px 16px color-mix(in srgb, var(--ambar) 40%, transparent);
+}
+.botao-tocar svg { width: 30px; height: 30px; }
+.botao-tocar:active { transform: scale(.96); }
+.icone-pausar { display: none !important; }
+.tocando .icone-pausar { display: block !important; }
+.tocando .icone-tocar { display: none !important; }
+
+.volume { display: flex; align-items: center; gap: 10px; color: var(--suave); max-width: 260px; margin: 0 auto; }
+.volume svg { flex: none; }
+
+/* ---------- fila ---------- */
+.fila-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.fila-topo h2 { margin: 0; font: 700 1.25rem/1.2 Georgia, serif; }
+#contagem { color: var(--suave); font: 400 .95rem system-ui, sans-serif; }
+.botao-principal {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px;
+  border-radius: 999px; background: var(--ambar); color: var(--sobre-ambar);
+  font-weight: 600; cursor: pointer; user-select: none;
+}
+.botao-principal:hover { filter: brightness(1.05); }
+.aviso { min-height: 1.2em; margin: 8px 0 4px; color: var(--suave); font-size: .9rem; }
+.aviso:empty { margin: 4px 0 0; min-height: 0; }
+
+.lista { list-style: none; margin: 0; padding: 0; }
+.faixa {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto 40px; align-items: center; gap: 10px;
+  padding: 6px 6px 6px 4px; border-radius: 12px;
+}
+.faixa:hover { background: color-mix(in srgb, var(--ambar) 7%, transparent); }
+.faixa.atual { background: color-mix(in srgb, var(--ambar) 14%, transparent); }
+.faixa-capa {
+  width: 44px; height: 44px; border-radius: 8px; overflow: hidden; border: 0; padding: 0;
+  background: linear-gradient(135deg, var(--madeira-clara), var(--madeira));
+  display: grid; place-items: center; color: #f8e8d2; font: 700 .9rem Georgia, serif;
+}
+.faixa-capa img { width: 100%; height: 100%; object-fit: cover; }
+.faixa-texto { min-width: 0; text-align: left; background: none; border: 0; padding: 4px 0; }
+.faixa-texto strong, .faixa-texto span {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.faixa-texto span { color: var(--suave); font-size: .88rem; }
+.faixa.atual .faixa-texto strong { color: var(--ambar); }
+.faixa-tempo { color: var(--suave); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.faixa-tirar { width: 40px; height: 40px; }
+.faixa-tirar svg { width: 18px; height: 18px; }
+
+.vazio { text-align: center; color: var(--suave); padding: 18px 8px 8px; }
+.vazio p { margin: 6px 0; }
+.vazio strong { color: var(--texto); }
+.dica { font-size: .85rem; }
+
+/* ---------- arrastar e soltar ---------- */
+.soltar {
+  position: fixed; inset: 0; z-index: 10;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--fundo) 82%, transparent);
+  border: 4px dashed var(--ambar); pointer-events: none;
+}
+.soltar p { font: 700 1.5rem Georgia, serif; color: var(--ambar); }
+.soltar[hidden] { display: none; }
+
+@media (max-width: 420px) {
+  .toca, .fila { padding: 14px; }
+  .faixa { grid-template-columns: 40px minmax(0, 1fr) auto 36px; gap: 8px; }
+  .faixa-capa { width: 40px; height: 40px; }
+  .estacao { font-size: .82rem; padding: 6px 10px; }
+}
