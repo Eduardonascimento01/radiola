@@ -2,8 +2,8 @@
 // para ele abrir mesmo sem internet (as suas músicas já ficam no IndexedDB).
 // Estratégia: tenta a internet primeiro (assim você recebe as atualizações);
 // sem internet, usa a cópia guardada.
-const CACHE = 'radiola-v8';
-const ARQUIVOS = ['./', 'index.html', 'estilo.css', 'extras.js', 'nucleo.js', 'banco.js', 'audius.js', 'radio.js', 'vitrine.js', 'importar.js', 'colecao.js', 'app.js',
+const CACHE = 'radiola-v9';
+const ARQUIVOS = ['./', 'index.html', 'estilo.css', 'extras.js', 'nucleo.js', 'banco.js', 'audius.js', 'archive.js', 'radio.js', 'vitrine.js', 'importar.js', 'colecao.js', 'app.js',
   'icone.svg', 'icone-192.png', 'icone-512.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => {

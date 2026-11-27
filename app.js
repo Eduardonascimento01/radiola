@@ -76,7 +76,7 @@
       texto.className = 'faixa-texto';
       const t = document.createElement('strong'); t.textContent = m.titulo;
       const a = document.createElement('span');
-      a.textContent = (m.artista || 'Artista desconhecido') + (m.fonte === 'audius' ? ' · Audius' : '');
+      a.textContent = (m.artista || 'Artista desconhecido') + (m.fonte === 'audius' ? ' · Audius' : m.fonte === 'archive' ? ' · Archive' : '');
       texto.append(t, a);
       texto.onclick = () => tocarDaTela(i);
 
@@ -123,7 +123,7 @@
     const m = atual();
     $('titulo').textContent = m ? m.titulo : 'Nenhuma música tocando';
     $('artista').textContent = m ? (m.artista || 'Artista desconhecido') + (m.album ? ' · ' + m.album : '')
-      : 'Adicione músicas do aparelho ou busque no Audius';
+      : 'Adicione músicas do aparelho ou busque no Audius e no Archive';
     const url = urlDaCapa(m);
     $('capa').hidden = !url;
     // capa da internet que não carregou (sem rede, imagem apagada): esconde em vez de mostrar "imagem quebrada"
@@ -221,6 +221,7 @@
     // MP3 do aparelho: um endereço temporário para o arquivo; Audius: o endereço da música na internet
     if (m.blob) { urlTocando = URL.createObjectURL(m.blob); audio.src = urlTocando; }
     else if (m.fonte === 'audius') audio.src = Audius.enderecoDoSom(m.trackId);
+    else if (m.fonte === 'archive') audio.src = Archive.enderecoDoSom(m);
     if (comecarEm > 0) audio.addEventListener('loadedmetadata', () => { audio.currentTime = comecarEm; }, { once: true });
     gravar('atual', m.id);
     gravar('tempo', comecarEm);
@@ -242,7 +243,7 @@
       return;
     }
     if (!musicas.length) {
-      if (estacao === 'audius') $('buscaAudius').focus(); else if (estacao === 'radio') $('buscaRadio').focus(); else $('arquivos').click();
+      if (estacao === 'audius') $('buscaAudius').focus(); else if (estacao === 'archive') $('buscaArchive').focus(); else if (estacao === 'radio') $('buscaRadio').focus(); else $('arquivos').click();
       return;
     }
     if (!audio.src) { carregar(pos >= 0 ? pos : 0); return; }
@@ -612,7 +613,7 @@
   // ---------- estações do dial (de onde vem o som) ----------
   const ESTACOES = [...document.querySelectorAll('.estacao[data-estacao]')];
   function mostrarEstacao(nome) {
-    estacao = nome === 'youtube' ? 'youtube' : nome === 'spotify' ? 'spotify' : nome === 'audius' ? 'audius' : nome === 'radio' ? 'radio' : 'arquivos';
+    estacao = nome === 'youtube' ? 'youtube' : nome === 'spotify' ? 'spotify' : nome === 'audius' ? 'audius' : nome === 'archive' ? 'archive' : nome === 'radio' ? 'radio' : 'arquivos';
     gravar('estacao', estacao);
     ESTACOES.forEach(b => {
       const ativa = b.dataset.estacao === estacao;
@@ -631,6 +632,7 @@
     const k = todas.findIndex(b => b.dataset.estacao === estacao);
     $('dial').style.setProperty('--ponteiro', ((k + 0.5) / todas.length * 100) + '%');
     $('painelAudius').hidden = estacao !== 'audius';
+    $('painelArchive').hidden = estacao !== 'archive';
     $('painelRadio').hidden = estacao !== 'radio';
     $('painelVitrine').hidden = estacao !== 'youtube' && estacao !== 'spotify';
 
@@ -652,6 +654,7 @@
     }
 
     if (estacao === 'audius' && !$('resultadosAudius').children.length) carregarEmAlta();
+    if (estacao === 'archive' && !$('albunsArchive').children.length) carregarDestaquesArchive();
     if (estacao === 'radio' && !$('resultadosRadio').children.length) carregarMaisOuvidasRadio();
   }
   ESTACOES.forEach(b => b.addEventListener('click', () => mostrarEstacao(b.dataset.estacao)));
@@ -830,8 +833,8 @@
     });
   }
 
-  // Põe uma música do Audius na fila e guarda (amanhã ela continua lá). tocarJa: já começa a tocar.
-  async function adicionarAudius(m, tocarJa) {
+  // Põe uma música da internet (Audius / Archive) na fila e guarda. tocarJa: já começa a tocar.
+  async function adicionarDaInternet(m, tocarJa) {
     let i = musicas.findIndex(x => x.id === m.id);
     if (i < 0) {
       if (biblioteca.has(m.id)) m = biblioteca.get(m.id);
@@ -846,6 +849,166 @@
     if (tocarJa) carregar(ordem.indexOf(i));
     else if (pos < 0) carregar(ordem.indexOf(i), false);
   }
+  const adicionarAudius = adicionarDaInternet;
+
+  // ---------- Archive: Internet Archive ----------
+  const Archive = window.Archive;
+  const avisoArchive = t => { $('avisoArchive').textContent = t || ''; };
+  let pedidoArchive = 0;
+  let albunsArchiveCache = [];
+  let albumAtualArchive = null;
+
+  async function mostrarResultadosArchive(promessa, carregando, titulo) {
+    const meu = ++pedidoArchive;
+    avisoArchive(carregando);
+    let lista;
+    try { lista = await promessa; }
+    catch (e) { if (meu === pedidoArchive) avisoArchive(e.message); return; }
+    if (meu !== pedidoArchive) return;
+    avisoArchive(lista.length ? titulo : 'Nada encontrado. Tente outra palavra.');
+    desenharAlbunsArchive(lista);
+  }
+
+  const carregarDestaquesArchive = () => mostrarResultadosArchive(Archive.buscarAlbuns(''), 'Carregando destaques do Internet Archive...', 'Destaques do Internet Archive:');
+  function buscarArchive() {
+    const q = $('buscaArchive').value.trim();
+    if (!q) { carregarDestaquesArchive(); return; }
+    mostrarResultadosArchive(Archive.buscarAlbuns(q), `Buscando "${q}"...`, `Resultados para "${q}":`);
+  }
+  $('buscarArchive').onclick = buscarArchive;
+  $('buscaArchive').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); buscarArchive(); } });
+
+  function desenharAlbunsArchive(lista) {
+    albunsArchiveCache = lista;
+    $('albumAberto').hidden = true;
+    $('albunsArchive').hidden = false;
+    const ol = $('albunsArchive');
+    ol.textContent = '';
+    lista.forEach(album => {
+      const li = document.createElement('li');
+      li.className = 'faixa';
+      const capa = document.createElement('button');
+      capa.type = 'button';
+      capa.className = 'faixa-capa';
+      capa.setAttribute('aria-label', 'Abrir álbum ' + album.titulo);
+      preencherCapa(capa, { titulo: album.titulo, capaUrl: album.capaUrl });
+      capa.onclick = () => abrirAlbumArchive(album);
+
+      const texto = document.createElement('button');
+      texto.type = 'button';
+      texto.className = 'faixa-texto';
+      const t = document.createElement('strong'); t.textContent = album.titulo;
+      const a = document.createElement('span');
+      a.textContent = (album.artista || 'Artista') + (album.ano ? ' · ' + album.ano : '');
+      texto.append(t, a);
+      texto.onclick = () => abrirAlbumArchive(album);
+
+      const tempo = document.createElement('span');
+      tempo.className = 'faixa-tempo';
+      tempo.textContent = '';
+
+      const abrirBtn = document.createElement('button');
+      abrirBtn.type = 'button';
+      abrirBtn.className = 'botao-icone faixa-tirar';
+      abrirBtn.title = 'Abrir álbum';
+      abrirBtn.setAttribute('aria-label', 'Abrir álbum ' + album.titulo);
+      abrirBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      abrirBtn.onclick = () => abrirAlbumArchive(album);
+
+      li.append(capa, texto, tempo, abrirBtn);
+      ol.append(li);
+    });
+  }
+
+  async function abrirAlbumArchive(album) {
+    albumAtualArchive = album;
+    avisoArchive(`Carregando "${album.titulo}"...`);
+    let musicasAlbum;
+    try {
+      musicasAlbum = await Archive.abrirAlbum(album);
+    } catch (e) {
+      avisoArchive(e.message);
+      return;
+    }
+    avisoArchive('');
+    $('albunsArchive').hidden = true;
+    $('albumAberto').hidden = false;
+    $('tituloAlbumAberto').textContent = album.titulo + (album.artista ? ' · ' + album.artista : '');
+    desenharMusicasArchive(musicasAlbum);
+  }
+
+  $('voltarArchive').onclick = () => {
+    $('albumAberto').hidden = true;
+    $('albunsArchive').hidden = false;
+    albumAtualArchive = null;
+    avisoArchive('');
+  };
+
+  let musicasAlbumAtualArchive = [];
+  function desenharMusicasArchive(musicasAlbum) {
+    musicasAlbumAtualArchive = musicasAlbum;
+    const ol = $('musicasArchive');
+    ol.textContent = '';
+    musicasAlbum.forEach((m) => {
+      const li = document.createElement('li');
+      li.className = 'faixa';
+      const capa = document.createElement('button');
+      capa.type = 'button';
+      capa.className = 'faixa-capa';
+      capa.setAttribute('aria-label', 'Tocar agora ' + m.titulo);
+      preencherCapa(capa, m);
+      capa.onclick = () => adicionarDaInternet(m, true);
+
+      const texto = document.createElement('button');
+      texto.type = 'button';
+      texto.className = 'faixa-texto';
+      const t = document.createElement('strong'); t.textContent = m.titulo;
+      const a = document.createElement('span'); a.textContent = (m.artista || 'Artista') + (m.album ? ' · ' + m.album : '');
+      texto.append(t, a);
+      texto.onclick = () => adicionarDaInternet(m, true);
+
+      const tempo = document.createElement('span');
+      tempo.className = 'faixa-tempo';
+      tempo.textContent = m.duracao ? N.formatarTempo(m.duracao) : '';
+
+      const mais = document.createElement('button');
+      mais.type = 'button';
+      mais.className = 'botao-icone faixa-tirar';
+      mais.title = 'Pôr na fila';
+      mais.setAttribute('aria-label', 'Pôr ' + m.titulo + ' na fila');
+      mais.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+      mais.onclick = () => adicionarDaInternet(m, false);
+
+      li.append(capa, texto, tempo, mais);
+      ol.append(li);
+    });
+  }
+
+  $('tocarAlbum').onclick = async () => {
+    if (!musicasAlbumAtualArchive.length) return;
+    for (const m of musicasAlbumAtualArchive) {
+      if (!musicas.some(x => x.id === m.id)) {
+        if (biblioteca.has(m.id)) {
+          musicas.push(biblioteca.get(m.id));
+          ordem.push(musicas.length - 1);
+        } else {
+          try { await B.salvar(m); } catch {}
+          biblioteca.set(m.id, m);
+          musicas.push(m);
+          ordem.push(musicas.length - 1);
+        }
+      }
+    }
+    guardarFila();
+    desenharFila();
+    desenharColecao();
+    const primeira = musicasAlbumAtualArchive[0];
+    const idx = musicas.findIndex(x => x.id === primeira.id);
+    if (idx >= 0) {
+      carregar(ordem.indexOf(idx));
+    }
+    avisoArchive(`Álbum "${albumAtualArchive ? albumAtualArchive.titulo : ''}" adicionado e tocando.`);
+  };
 
 
   // ---------- Rádio: rádios ao vivo do Brasil e do mundo ----------
@@ -1241,7 +1404,7 @@
         const texto = document.createElement('button');
         texto.type = 'button'; texto.className = 'faixa-texto';
         const t = document.createElement('strong'); t.textContent = m.titulo;
-        const a = document.createElement('span'); a.textContent = (m.artista || 'Artista desconhecido') + (m.fonte === 'audius' ? ' · Audius' : '');
+        const a = document.createElement('span'); a.textContent = (m.artista || 'Artista desconhecido') + (m.fonte === 'audius' ? ' · Audius' : m.fonte === 'archive' ? ' · Archive' : '');
         texto.append(t, a);
         capa.onclick = texto.onclick = () => tocarLista(ids, l.nome, k);
         const tempo = document.createElement('span');
@@ -1425,5 +1588,5 @@
   }
 
   // para os testes automáticos conseguirem adicionar arquivos
-  window.Radiola = { adicionar, adicionarAudius, mostrarEstacao, estado: () => ({ musicas: musicas.map(m => ({ titulo: m.titulo, artista: m.artista, duracao: m.duracao })), ordem, pos, tocando: !audio.paused }) };
+  window.Radiola = { adicionar, adicionarAudius, adicionarDaInternet, mostrarEstacao, estado: () => ({ musicas: musicas.map(m => ({ titulo: m.titulo, artista: m.artista, duracao: m.duracao })), ordem, pos, tocando: !audio.paused }) };
 })();

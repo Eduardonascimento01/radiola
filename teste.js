@@ -114,6 +114,47 @@ teste('Audius: resposta da API vira música da fila (e só as que tocam)', () =>
   assert.ok(A.enderecoDoSom('YmJWK').startsWith('https://api.audius.co/v1/tracks/YmJWK/stream?app_name=radiola'));
 });
 
+const Archive = require('./archive.js');
+teste('Archive: montarBusca', () => {
+  const url = Archive.montarBusca('samba');
+  assert.ok(url.includes('mediatype%3Aaudio') || url.includes('mediatype:audio'));
+  assert.ok(url.includes('rows=30'));
+});
+
+teste('Archive: paraAlbum com title e creator em lista e sem year', () => {
+  const doc = { identifier: 'show1', title: ['Show ao vivo'], creator: ['Banda X'] };
+  const alb = Archive.paraAlbum(doc);
+  assert.strictEqual(alb.titulo, 'Show ao vivo');
+  assert.strictEqual(alb.artista, 'Banda X');
+  assert.strictEqual(alb.ano, '');
+  assert.strictEqual(alb.capaUrl, 'https://archive.org/services/img/show1');
+});
+
+teste('Archive: musicasDoAlbum com 2 MP3, 1 Ogg ignorado, 1 spectrogram, track 1 antes de 2, durações 252 e 3492', () => {
+  const meta = {
+    files: [
+      { name: 'track2.mp3', format: 'VBR MP3', title: 'Segunda', length: '4:12', track: '2', creator: 'Artista A' },
+      { name: 'track1.mp3', format: '128Kbps MP3', length: '3492.23', track: '1' },
+      { name: 'audio.ogg', format: 'Ogg Vorbis', length: '100' },
+      { name: 'capa_spectrogram.png', format: 'PNG' },
+    ]
+  };
+  const album = { identifier: 'show1', titulo: 'Show', artista: 'Banda' };
+  const musicas = Archive.musicasDoAlbum(meta, album);
+  assert.strictEqual(musicas.length, 2);
+  assert.strictEqual(musicas[0].arquivo, 'track1.mp3');
+  assert.strictEqual(musicas[0].titulo, 'track1');
+  assert.strictEqual(musicas[0].duracao, 3492);
+  assert.strictEqual(musicas[1].arquivo, 'track2.mp3');
+  assert.strictEqual(musicas[1].titulo, 'Segunda');
+  assert.strictEqual(musicas[1].duracao, 252);
+});
+
+teste('Archive: enderecoDoSom com nome com espaço e acento', () => {
+  const m = { identifier: 'show1', arquivo: 'Música 1.mp3' };
+  assert.strictEqual(Archive.enderecoDoSom(m), 'https://archive.org/download/show1/' + encodeURIComponent('Música 1.mp3'));
+});
+
 const R = require('./radio.js');
 teste('Rádio: só https, sem repetidas, nome e gêneros', () => {
   const lista = [
@@ -374,6 +415,20 @@ teste('extras: capa com duas cores fortes não vira cinza (fica a que domina)', 
   for (let i = 0; i < 300; i++) px.push(230, 120, 40, 255);   // laranja (mais)
   for (let i = 0; i < 400; i++) px.push(120, 100, 90, 255);   // fundo marrom apagado (muito, mas fraco)
   assert.deepStrictEqual(X.corDaCapa(px), { r: 230, g: 120, b: 40 });
+});
+
+teste('Archive: a mesma música em 2 MP3 aparece uma vez só; busca com sinais não quebra', () => {
+  const Ar = require('./archive.js');
+  const album = Ar.paraAlbum({ identifier: 'show1', title: 'Show', creator: 'Banda' });
+  const meta = { files: [
+    { name: '01 Abertura.mp3', format: 'VBR MP3', track: '1', length: '120' },
+    { name: '01 Abertura_64kb.mp3', format: '64Kbps MP3', track: '1', length: '120' },
+    { name: '02 Final.mp3', format: 'VBR MP3', track: '2', length: '200' },
+    { name: '02 Final_64kb.mp3', format: '64Kbps MP3', track: '2', length: '200' },
+  ] };
+  assert.deepStrictEqual(Ar.musicasDoAlbum(meta, album).map(m => m.arquivo), ['01 Abertura.mp3', '02 Final.mp3']);
+  const url = decodeURIComponent(Ar.montarBusca('( samba: "bossa"').replace(/\+/g, ' '));
+  assert.ok(url.includes('(samba bossa) AND mediatype:audio'), url);
 });
 
 console.log(`\n${ok} testes passaram.`);

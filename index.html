@@ -33,6 +33,7 @@
     <div class="estacoes">
       <button class="estacao ativa" type="button" data-estacao="arquivos" aria-pressed="true">Meus arquivos</button>
       <button class="estacao" type="button" data-estacao="audius" aria-pressed="false">Audius</button>
+      <button class="estacao" type="button" data-estacao="archive" aria-pressed="false">Archive</button>
       <button class="estacao" type="button" data-estacao="radio" aria-pressed="false">Rádio</button>
       <button class="estacao" type="button" data-estacao="youtube" aria-pressed="false">YouTube</button>
       <button class="estacao" type="button" data-estacao="spotify" aria-pressed="false">Spotify</button>
@@ -46,7 +47,7 @@
       </div>
       <div class="info">
         <p class="titulo" id="titulo">Nenhuma música tocando</p>
-        <p class="artista" id="artista">Adicione músicas do aparelho ou busque no Audius</p>
+        <p class="artista" id="artista">Adicione músicas do aparelho ou busque no Audius e no Archive</p>
       </div>
       <!-- curtir e pôr na playlist (valem para a música que está tocando) -->
       <div class="acoes-musica">
@@ -103,6 +104,26 @@
       </div>
       <p class="aviso" id="avisoAudius" role="status" aria-live="polite"></p>
       <ol class="lista" id="resultadosAudius"></ol>
+    </section>
+
+    <section class="estacao-painel" id="painelArchive" aria-label="Internet Archive" hidden>
+      <div class="fila-topo">
+        <h2>Internet Archive</h2>
+        <a class="credito" href="https://archive.org" target="_blank" rel="noopener">archive.org ↗</a>
+      </div>
+      <p>Música livre e legal: shows, netlabels e discos antigos. Toca inteira e sem anúncio.</p>
+      <div class="busca">
+        <input type="search" id="buscaArchive" placeholder="Buscar álbum ou artista (ex: samba, show, jazz)" aria-label="Buscar no Internet Archive" enterkeyhint="search" autocomplete="off">
+        <button class="botao-principal" type="button" id="buscarArchive">Buscar</button>
+      </div>
+      <p class="aviso" id="avisoArchive" role="status" aria-live="polite"></p>
+      <ol class="lista" id="albunsArchive"></ol>
+      <div id="albumAberto" hidden>
+        <button class="botao-secundario" type="button" id="voltarArchive">← Voltar aos álbuns</button>
+        <h3 id="tituloAlbumAberto"></h3>
+        <button class="botao-principal" type="button" id="tocarAlbum">▶ Tocar o álbum</button>
+        <ol class="lista" id="musicasArchive"></ol>
+      </div>
     </section>
 
     <section class="estacao-painel" id="painelRadio" aria-label="Rádio ao vivo" hidden>
@@ -241,6 +262,7 @@
   <script src="nucleo.js"></script>
   <script src="banco.js"></script>
   <script src="audius.js"></script>
+  <script src="archive.js"></script>
   <script src="radio.js"></script>
   <script src="vitrine.js"></script>
   <script src="importar.js"></script>
