@@ -24,7 +24,8 @@
   let pos = -1;
   let repetir = ler('repetir', 'nao');     // 'nao' | 'todas' | 'uma'
   let aleatorio = ler('aleatorio', false);
-  let estacao = ler('estacao', 'arquivos');   // 'arquivos' | 'audius' | 'radio' | 'youtube' | 'spotify'
+  let estacao = ler('estacao', 'arquivos');   // 'arquivos' | 'audius' | 'archive' | 'radio' | 'youtube' | 'spotify'
+  let aba = ler('aba', 'fila');         // 'fila' | 'estacao' | 'colecao'
   let radio = null;
   let urlTocando = null;
   const capas = new Map();                  // id -> endereço temporário da imagem da capa
@@ -35,6 +36,37 @@
 
   const atual = () => (pos >= 0 && pos < ordem.length ? musicas[ordem[pos]] : null);
   const aviso = texto => { $('aviso').textContent = texto || ''; };
+
+  // As abas grudam logo ABAIXO do player compacto (celular). Em vez de chutar a altura do player
+  // (muda com o tamanho da letra e do aparelho), medimos a altura de verdade sempre que ela mudar.
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(([e]) => {
+      const alt = Math.ceil(e.target.getBoundingClientRect().height);
+      document.documentElement.style.setProperty('--altura-player', alt + 'px');
+    }).observe(document.querySelector('.toca'));
+  }
+
+  function mostrarAba(nome) {
+    aba = nome === 'estacao' ? 'estacao' : nome === 'colecao' ? 'colecao' : 'fila';
+    gravar('aba', aba);
+    ['fila', 'estacao', 'colecao'].forEach(k => {
+      const ativo = k === aba;
+      const btn = $(`abaBotao${k.charAt(0).toUpperCase() + k.slice(1)}`);
+      const cnt = $(`aba${k.charAt(0).toUpperCase() + k.slice(1)}`);
+      if (btn) {
+        btn.classList.toggle('ativa', ativo);
+        btn.setAttribute('aria-selected', String(ativo));
+      }
+      if (cnt) cnt.hidden = !ativo;
+    });
+    const abasEl = document.querySelector('.abas');
+    if (abasEl) abasEl.scrollIntoView({ block: 'nearest' });
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.aba[data-aba]').forEach(b => {
+      b.onclick = () => mostrarAba(b.dataset.aba);
+    });
+  });
 
   // A capinha quadrada da lista: a imagem da capa, ou a 1ª letra do título
   function preencherCapa(el, m) {
@@ -612,9 +644,10 @@
 
   // ---------- estações do dial (de onde vem o som) ----------
   const ESTACOES = [...document.querySelectorAll('.estacao[data-estacao]')];
-  function mostrarEstacao(nome) {
+  function mostrarEstacao(nome, mudarAba = true) {
     estacao = nome === 'youtube' ? 'youtube' : nome === 'spotify' ? 'spotify' : nome === 'audius' ? 'audius' : nome === 'archive' ? 'archive' : nome === 'radio' ? 'radio' : 'arquivos';
     gravar('estacao', estacao);
+    if (mudarAba) mostrarAba('estacao');
     ESTACOES.forEach(b => {
       const ativa = b.dataset.estacao === estacao;
       b.classList.toggle('ativa', ativa);
@@ -631,6 +664,7 @@
     const todas = [...document.querySelectorAll('.estacao')];
     const k = todas.findIndex(b => b.dataset.estacao === estacao);
     $('dial').style.setProperty('--ponteiro', ((k + 0.5) / todas.length * 100) + '%');
+    $('painelArquivos').hidden = estacao !== 'arquivos';
     $('painelAudius').hidden = estacao !== 'audius';
     $('painelArchive').hidden = estacao !== 'archive';
     $('painelRadio').hidden = estacao !== 'radio';
@@ -657,7 +691,7 @@
     if (estacao === 'archive' && !$('albunsArchive').children.length) carregarDestaquesArchive();
     if (estacao === 'radio' && !$('resultadosRadio').children.length) carregarMaisOuvidasRadio();
   }
-  ESTACOES.forEach(b => b.addEventListener('click', () => mostrarEstacao(b.dataset.estacao)));
+  ESTACOES.forEach(b => b.addEventListener('click', () => mostrarEstacao(b.dataset.estacao, true)));
 
   // ---------- Vitrine (YouTube e Spotify) ----------
   const Vitrine = window.Vitrine;
@@ -1470,6 +1504,7 @@
     if (aleatorio) ordem = N.embaralhar(musicas.length, inicio);
     guardarFila();
     desenharFila();
+    mostrarAba('fila');
     carregar(ordem.indexOf(inicio));
     aviso(`Tocando "${nome}" (${C.contar(musicas.length)}).`);
   }
@@ -1557,7 +1592,8 @@
   // ---------- começar: traz a fila guardada no navegador ----------
   async function iniciar() {
     desenharBotoes();
-    mostrarEstacao(estacao);
+    mostrarAba(aba);
+    mostrarEstacao(estacao, false);
     let guardadas = [];
     try { guardadas = await B.listar(); }
     catch { aviso('Este navegador não deixa guardar músicas (modo anônimo?). Dá para tocar, mas a fila some ao fechar.'); }

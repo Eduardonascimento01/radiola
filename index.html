@@ -7,8 +7,9 @@
   <meta name="description" content="Radiola: o seu aparelho de música. Toca as suas músicas e, nas próximas etapas, Audius, rádios e mais.">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3eadd">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#15100c">
-  <link rel="icon" href="icone.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icone-192.png">
+  <link rel="icon" href="icone-32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="icone-192.png" sizes="192x192" type="image/png">
+  <link rel="apple-touch-icon" href="icone-180.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="estilo.css">
   <script>
@@ -19,26 +20,13 @@
 <body>
   <header class="topo">
     <div class="marca">
-      <img src="icone.svg" alt="" width="36" height="36">
+      <img src="icone-64.png" alt="" width="36" height="36" class="marca-icone">
       <h1>Radiola</h1>
     </div>
     <button id="tema" class="botao-icone" type="button" aria-label="Trocar tema (automático, claro ou escuro)" title="Tema">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18V3z" fill="currentColor"/><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/></svg>
     </button>
   </header>
-
-  <!-- O "dial" da radiola: escolhe de onde vem o som. As outras estações chegam nas próximas etapas. -->
-  <nav class="dial" id="dial" aria-label="De onde vem o som">
-    <div class="dial-escala" aria-hidden="true"></div>
-    <div class="estacoes">
-      <button class="estacao ativa" type="button" data-estacao="arquivos" aria-pressed="true">Meus arquivos</button>
-      <button class="estacao" type="button" data-estacao="audius" aria-pressed="false">Audius</button>
-      <button class="estacao" type="button" data-estacao="archive" aria-pressed="false">Archive</button>
-      <button class="estacao" type="button" data-estacao="radio" aria-pressed="false">Rádio</button>
-      <button class="estacao" type="button" data-estacao="youtube" aria-pressed="false">YouTube</button>
-      <button class="estacao" type="button" data-estacao="spotify" aria-pressed="false">Spotify</button>
-    </div>
-  </nav>
 
   <main class="palco">
     <section class="toca" aria-label="Tocando agora">
@@ -92,120 +80,152 @@
     </section>
 
     <div class="coluna">
-    <!-- Estação Audius: buscar e tocar músicas inteiras, grátis -->
-    <section class="estacao-painel" id="painelAudius" aria-label="Audius" hidden>
-      <div class="fila-topo">
-        <h2>Audius</h2>
-        <a class="credito" href="https://audius.co" target="_blank" rel="noopener">músicas do Audius ↗</a>
-      </div>
-      <div class="busca">
-        <input type="search" id="buscaAudius" placeholder="Buscar música ou artista (ex: samba, lofi)" aria-label="Buscar no Audius" enterkeyhint="search" autocomplete="off">
-        <button class="botao-principal" type="button" id="buscarAudius">Buscar</button>
-      </div>
-      <p class="aviso" id="avisoAudius" role="status" aria-live="polite"></p>
-      <ol class="lista" id="resultadosAudius"></ol>
-    </section>
+      <nav class="abas" role="tablist" aria-label="O que mostrar">
+        <button type="button" role="tab" class="aba" data-aba="fila" id="abaBotaoFila">Fila</button>
+        <button type="button" role="tab" class="aba" data-aba="estacao" id="abaBotaoEstacao">Estações</button>
+        <button type="button" role="tab" class="aba" data-aba="colecao" id="abaBotaoColecao">Coleção</button>
+      </nav>
 
-    <section class="estacao-painel" id="painelArchive" aria-label="Internet Archive" hidden>
-      <div class="fila-topo">
-        <h2>Internet Archive</h2>
-        <a class="credito" href="https://archive.org" target="_blank" rel="noopener">archive.org ↗</a>
+      <div class="aba-conteudo" id="abaFila" role="tabpanel">
+        <section class="fila" aria-label="Sua fila">
+          <div class="fila-topo">
+            <h2>Sua fila <span id="contagem"></span></h2>
+            <label class="botao-principal" for="arquivos">+ Adicionar músicas</label>
+            <input type="file" id="arquivos" accept="audio/*,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.webm" multiple hidden>
+          </div>
+          <p class="aviso" id="aviso" role="status" aria-live="polite"></p>
+          <ol class="lista" id="lista"></ol>
+          <div class="vazio" id="vazio">
+            <p><strong>A fila está vazia.</strong></p>
+            <p>Toque em <em>Adicionar músicas</em> e escolha arquivos do seu aparelho (MP3, M4A, OGG, WAV...). No computador, dá também para arrastar os arquivos para cá. Ou escolha <em>Audius</em> no dial para buscar músicas grátis.</p>
+            <p class="dica">As músicas ficam guardadas só neste navegador. Nada é enviado para a internet.</p>
+          </div>
+        </section>
       </div>
-      <p>Música livre e legal: shows, netlabels e discos antigos. Toca inteira e sem anúncio.</p>
-      <div class="busca">
-        <input type="search" id="buscaArchive" placeholder="Buscar álbum ou artista (ex: samba, show, jazz)" aria-label="Buscar no Internet Archive" enterkeyhint="search" autocomplete="off">
-        <button class="botao-principal" type="button" id="buscarArchive">Buscar</button>
-      </div>
-      <p class="aviso" id="avisoArchive" role="status" aria-live="polite"></p>
-      <ol class="lista" id="albunsArchive"></ol>
-      <div id="albumAberto" hidden>
-        <button class="botao-secundario" type="button" id="voltarArchive">← Voltar aos álbuns</button>
-        <h3 id="tituloAlbumAberto"></h3>
-        <button class="botao-principal" type="button" id="tocarAlbum">▶ Tocar o álbum</button>
-        <ol class="lista" id="musicasArchive"></ol>
-      </div>
-    </section>
 
-    <section class="estacao-painel" id="painelRadio" aria-label="Rádio ao vivo" hidden>
-      <div class="fila-topo">
-        <h2>Rádio ao vivo</h2>
-        <a class="credito" href="https://www.radio-browser.info" target="_blank" rel="noopener">rádios do Radio Browser ↗</a>
-      </div>
-      <div class="busca">
-        <input type="search" id="buscaRadio" placeholder="Buscar rádio ou estilo (ex: samba, notícias)" aria-label="Buscar rádio ou estilo" enterkeyhint="search" autocomplete="off">
-        <button class="botao-principal" type="button" id="buscarRadio">Buscar</button>
-      </div>
-      <p class="aviso" id="avisoRadio" role="status" aria-live="polite"></p>
-      <div id="blocoFavoritasRadio" hidden>
-        <h3>Suas rádios favoritas</h3>
-        <ol class="lista" id="favoritasRadio"></ol>
-      </div>
-      <ol class="lista" id="resultadosRadio"></ol>
-    </section>
+      <div class="aba-conteudo" id="abaEstacao" role="tabpanel" hidden>
+        <nav class="dial" id="dial" aria-label="De onde vem o som">
+          <div class="dial-escala" aria-hidden="true"></div>
+          <div class="estacoes">
+            <button class="estacao ativa" type="button" data-estacao="arquivos" aria-pressed="true">Meus arquivos</button>
+            <button class="estacao" type="button" data-estacao="audius" aria-pressed="false">Audius</button>
+            <button class="estacao" type="button" data-estacao="archive" aria-pressed="false">Archive</button>
+            <button class="estacao" type="button" data-estacao="radio" aria-pressed="false">Rádio</button>
+            <button class="estacao" type="button" data-estacao="youtube" aria-pressed="false">YouTube</button>
+            <button class="estacao" type="button" data-estacao="spotify" aria-pressed="false">Spotify</button>
+          </div>
+        </nav>
 
-    <section class="estacao-painel" id="painelVitrine" aria-label="Vitrine" hidden>
-      <div class="fila-topo">
-        <h2 id="tituloVitrine">YouTube</h2>
-        <a class="credito" id="creditoVitrine" href="https://www.youtube.com" target="_blank" rel="noopener">youtube.com ↗</a>
-      </div>
-      <p id="explicaVitrine">Cole o link de um vídeo ou playlist do YouTube. O vídeo toca aqui dentro, pelo player do próprio YouTube.</p>
-      <div class="busca">
-        <input type="url" id="linkVitrine" placeholder="https://youtu.be/..." aria-label="Link do YouTube ou Spotify" enterkeyhint="go" autocomplete="off" inputmode="url">
-        <button class="botao-principal" type="button" id="abrirVitrine">Abrir</button>
-      </div>
-      <p class="aviso" id="avisoVitrine" role="status" aria-live="polite"></p>
-      <div id="playerVitrine"></div>
-      <h3 id="tituloLinksVitrine">Seus links</h3>
-      <ol class="lista" id="listaVitrine"></ol>
-    </section>
+        <section class="estacao-painel" id="painelArquivos" aria-label="Meus arquivos">
+          <div class="fila-topo">
+            <h2>Meus arquivos</h2>
+          </div>
+          <p>Toque em <em>Adicionar músicas</em> para escolher arquivos do aparelho (MP3, M4A, OGG...). No computador, dá também para arrastar.</p>
+          <div style="margin-top: 14px;">
+            <label class="botao-principal" for="arquivos">+ Adicionar músicas</label>
+          </div>
+        </section>
 
-    <section class="fila" aria-label="Sua fila">
-      <div class="fila-topo">
-        <h2>Sua fila <span id="contagem"></span></h2>
-        <label class="botao-principal" for="arquivos">+ Adicionar músicas</label>
-        <input type="file" id="arquivos" accept="audio/*,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.webm" multiple hidden>
-      </div>
-      <p class="aviso" id="aviso" role="status" aria-live="polite"></p>
-      <ol class="lista" id="lista"></ol>
-      <div class="vazio" id="vazio">
-        <p><strong>A fila está vazia.</strong></p>
-        <p>Toque em <em>Adicionar músicas</em> e escolha arquivos do seu aparelho (MP3, M4A, OGG, WAV...). No computador, dá também para arrastar os arquivos para cá. Ou escolha <em>Audius</em> no dial para buscar músicas grátis.</p>
-        <p class="dica">As músicas ficam guardadas só neste navegador. Nada é enviado para a internet.</p>
-      </div>
-    </section>
+        <section class="estacao-painel" id="painelAudius" aria-label="Audius" hidden>
+          <div class="fila-topo">
+            <h2>Audius</h2>
+            <a class="credito" href="https://audius.co" target="_blank" rel="noopener">músicas do Audius ↗</a>
+          </div>
+          <div class="busca">
+            <input type="search" id="buscaAudius" placeholder="Buscar música ou artista (ex: samba, lofi)" aria-label="Buscar no Audius" enterkeyhint="search" autocomplete="off">
+            <button class="botao-principal" type="button" id="buscarAudius">Buscar</button>
+          </div>
+          <p class="aviso" id="avisoAudius" role="status" aria-live="polite"></p>
+          <ol class="lista" id="resultadosAudius"></ol>
+        </section>
 
-    <!-- Sua coleção: curtidas, playlists e todas as músicas guardadas -->
-    <section class="colecao" id="colecao" aria-label="Sua coleção">
-      <div class="fila-topo">
-        <h2>Sua coleção</h2>
-        <div class="botoes-topo-colecao">
-          <button class="botao-secundario" type="button" id="abrirImportar">Importar lista</button>
-          <button class="botao-secundario" type="button" id="novaPlaylist">+ Nova playlist</button>
-        </div>
+        <section class="estacao-painel" id="painelArchive" aria-label="Internet Archive" hidden>
+          <div class="fila-topo">
+            <h2>Internet Archive</h2>
+            <a class="credito" href="https://archive.org" target="_blank" rel="noopener">archive.org ↗</a>
+          </div>
+          <p>Música livre e legal: shows, netlabels e discos antigos. Toca inteira e sem anúncio.</p>
+          <div class="busca">
+            <input type="search" id="buscaArchive" placeholder="Buscar álbum ou artista (ex: samba, show, jazz)" aria-label="Buscar no Internet Archive" enterkeyhint="search" autocomplete="off">
+            <button class="botao-principal" type="button" id="buscarArchive">Buscar</button>
+          </div>
+          <p class="aviso" id="avisoArchive" role="status" aria-live="polite"></p>
+          <ol class="lista" id="albunsArchive"></ol>
+          <div id="albumAberto" hidden>
+            <button class="botao-secundario" type="button" id="voltarArchive">← Voltar aos álbuns</button>
+            <h3 id="tituloAlbumAberto"></h3>
+            <button class="botao-principal" type="button" id="tocarAlbum">▶ Tocar o álbum</button>
+            <ol class="lista" id="musicasArchive"></ol>
+          </div>
+        </section>
+
+        <section class="estacao-painel" id="painelRadio" aria-label="Rádio ao vivo" hidden>
+          <div class="fila-topo">
+            <h2>Rádio ao vivo</h2>
+            <a class="credito" href="https://www.radio-browser.info" target="_blank" rel="noopener">rádios do Radio Browser ↗</a>
+          </div>
+          <div class="busca">
+            <input type="search" id="buscaRadio" placeholder="Buscar rádio ou estilo (ex: samba, notícias)" aria-label="Buscar rádio ou estilo" enterkeyhint="search" autocomplete="off">
+            <button class="botao-principal" type="button" id="buscarRadio">Buscar</button>
+          </div>
+          <p class="aviso" id="avisoRadio" role="status" aria-live="polite"></p>
+          <div id="blocoFavoritasRadio" hidden>
+            <h3>Suas rádios favoritas</h3>
+            <ol class="lista" id="favoritasRadio"></ol>
+          </div>
+          <ol class="lista" id="resultadosRadio"></ol>
+        </section>
+
+        <section class="estacao-painel" id="painelVitrine" aria-label="Vitrine" hidden>
+          <div class="fila-topo">
+            <h2 id="tituloVitrine">YouTube</h2>
+            <a class="credito" id="creditoVitrine" href="https://www.youtube.com" target="_blank" rel="noopener">youtube.com ↗</a>
+          </div>
+          <p id="explicaVitrine">Cole o link de um vídeo ou playlist do YouTube. O vídeo toca aqui dentro, pelo player do próprio YouTube.</p>
+          <div class="busca">
+            <input type="url" id="linkVitrine" placeholder="https://youtu.be/..." aria-label="Link do YouTube ou Spotify" enterkeyhint="go" autocomplete="off" inputmode="url">
+            <button class="botao-principal" type="button" id="abrirVitrine">Abrir</button>
+          </div>
+          <p class="aviso" id="avisoVitrine" role="status" aria-live="polite"></p>
+          <div id="playerVitrine"></div>
+          <h3 id="tituloLinksVitrine">Seus links</h3>
+          <ol class="lista" id="listaVitrine"></ol>
+        </section>
       </div>
-      <div class="bloco-importar" id="blocoImportar" hidden>
-        <p class="explica-importar">Cole links de músicas do Spotify ou YouTube, texto "Artista - Música" (um por linha), ou importe um arquivo CSV.</p>
-        <div class="arquivo-linha">
-          <label class="botao-secundario" for="arquivoImportar">Escolher arquivo (.csv, .txt)</label>
-          <input type="file" id="arquivoImportar" accept=".csv,.txt" hidden>
-        </div>
-        <textarea id="textoImportar" rows="5" placeholder="Ex:&#10;https://open.spotify.com/track/...&#10;Legião Urbana - Tempo Perdido" aria-label="Texto para importar"></textarea>
-        <div class="nova-linha">
-          <input type="text" id="nomeImportada" maxlength="40" placeholder="Nome da playlist" aria-label="Nome da playlist importada" enterkeyhint="done" autocomplete="off">
-          <button class="botao-principal" type="button" id="lerImportar">Procurar as músicas</button>
-          <button class="botao-secundario" type="button" id="pararImportar" hidden>Parar</button>
-        </div>
-        <p class="aviso" id="avisoImportar" role="status" aria-live="polite"></p>
-        <ol class="lista" id="resultadoImportar"></ol>
-        <button class="botao-principal" type="button" id="salvarImportar" hidden style="margin-top: 12px; width: 100%;">Criar a playlist</button>
+
+      <div class="aba-conteudo" id="abaColecao" role="tabpanel" hidden>
+        <section class="colecao" id="colecao" aria-label="Sua coleção">
+          <div class="fila-topo">
+            <h2>Sua coleção</h2>
+            <div class="botoes-topo-colecao">
+              <button class="botao-secundario" type="button" id="abrirImportar">Importar lista</button>
+              <button class="botao-secundario" type="button" id="novaPlaylist">+ Nova playlist</button>
+            </div>
+          </div>
+          <div class="bloco-importar" id="blocoImportar" hidden>
+            <p class="explica-importar">Cole links de músicas do Spotify ou YouTube, texto "Artista - Música" (um por linha), ou importe um arquivo CSV.</p>
+            <div class="arquivo-linha">
+              <label class="botao-secundario" for="arquivoImportar">Escolher arquivo (.csv, .txt)</label>
+              <input type="file" id="arquivoImportar" accept=".csv,.txt" hidden>
+            </div>
+            <textarea id="textoImportar" rows="5" placeholder="Ex:&#10;https://open.spotify.com/track/...&#10;Legião Urbana - Tempo Perdido" aria-label="Texto para importar"></textarea>
+            <div class="nova-linha">
+              <input type="text" id="nomeImportada" maxlength="40" placeholder="Nome da playlist" aria-label="Nome da playlist importada" enterkeyhint="done" autocomplete="off">
+              <button class="botao-principal" type="button" id="lerImportar">Procurar as músicas</button>
+              <button class="botao-secundario" type="button" id="pararImportar" hidden>Parar</button>
+            </div>
+            <p class="aviso" id="avisoImportar" role="status" aria-live="polite"></p>
+            <ol class="lista" id="resultadoImportar"></ol>
+            <button class="botao-principal" type="button" id="salvarImportar" hidden style="margin-top: 12px; width: 100%;">Criar a playlist</button>
+          </div>
+          <div class="nova-linha" id="novaLinha" hidden>
+            <input type="text" id="nomePlaylist" maxlength="40" placeholder="Nome da playlist (ex: Treino)" aria-label="Nome da nova playlist" enterkeyhint="done" autocomplete="off">
+            <button class="botao-principal" type="button" id="criarPlaylist">Criar</button>
+          </div>
+          <p class="aviso" id="avisoColecao" role="status" aria-live="polite"></p>
+          <ul class="listas" id="listas"></ul>
+        </section>
       </div>
-      <div class="nova-linha" id="novaLinha" hidden>
-        <input type="text" id="nomePlaylist" maxlength="40" placeholder="Nome da playlist (ex: Treino)" aria-label="Nome da nova playlist" enterkeyhint="done" autocomplete="off">
-        <button class="botao-principal" type="button" id="criarPlaylist">Criar</button>
-      </div>
-      <p class="aviso" id="avisoColecao" role="status" aria-live="polite"></p>
-      <ul class="listas" id="listas"></ul>
-    </section>
     </div>
   </main>
 

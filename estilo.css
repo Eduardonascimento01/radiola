@@ -73,6 +73,7 @@ svg { width: 24px; height: 24px; display: block; }
   padding: 14px 0 10px;
 }
 .marca { display: flex; align-items: center; gap: 10px; }
+.marca-icone { border-radius: 9px; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
 .marca h1 { margin: 0; font: 700 1.6rem/1 Georgia, "Times New Roman", serif; letter-spacing: .5px; }
 
 .botao-icone {
@@ -393,4 +394,71 @@ input[type="range"]::-moz-range-thumb {
 .rodape-player { text-align: center; margin-top: 10px; }
 @media (hover: none), (pointer: coarse) {
   .link-atalhos { display: none; }
+}
+
+/* ---------- abas ---------- */
+.abas {
+  display: flex; gap: 4px; padding: 4px;
+  background: var(--cartao); border: 1px solid var(--borda);
+  border-radius: 999px; box-shadow: var(--sombra);
+  position: sticky; top: var(--altura-player, 160px); z-index: 10;
+  margin-bottom: 0;   /* o espaço até a lista já vem do gap da coluna */
+}
+@media (min-width: 860px) {
+  .abas { top: 16px; }
+}
+.aba {
+  flex: 1; min-height: 40px; border: 0; background: transparent;
+  color: var(--suave); font-weight: 600; border-radius: 999px;
+  transition: color 150ms ease, background-color 150ms ease, transform 160ms var(--ease-out);
+}
+.aba.ativa { background: var(--ambar); color: var(--sobre-ambar); }
+.aba:active { transform: scale(0.97); }
+.aba-conteudo { display: grid; gap: 16px; min-width: 0; }
+.aba-conteudo[hidden] { display: none; }
+
+/* ---------- player compacto no celular ---------- */
+@media (max-width: 859px) {
+  :root { --altura-player: 160px; }   /* valor de reserva; o app mede a altura de verdade (app.js) */
+  .palco { display: block; }
+  .toca {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--cartao);
+    border-radius: 0 0 18px 18px; border-bottom: 1px solid var(--borda);
+    padding: 10px 14px 12px; margin: 0 -16px 16px;
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "disco info acoes"
+      "controles controles tempos"
+      "barra barra barra";
+    align-items: center; gap: 8px 10px;
+  }
+  .disco {
+    grid-area: disco; width: 52px; height: 52px; margin: 0;
+  }
+  .info {
+    grid-area: info; text-align: left; min-width: 0;
+  }
+  .titulo { font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .artista { font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .acoes-musica {
+    grid-area: acoes; margin: 0; gap: 4px; justify-content: flex-end;
+  }
+  .botao-acao { min-height: 32px; padding: 0 8px; }
+  .botao-acao span { display: none; }
+  /* display: contents: a caixa da barra "some" do layout e a barrinha e o tempo (que estão dentro dela)
+     viram peças da grade do player, cada uma no seu lugar (a barra embaixo, o tempo ao lado dos controles) */
+  .barra { display: contents; }
+  .barra input[type="range"] { grid-area: barra; height: 18px; }
+  .tempos {
+    grid-area: tempos; justify-self: end; font-size: .8rem; color: var(--suave);
+    display: flex; gap: 4px;
+  }
+  #tempoTotal::before { content: " / "; }
+  .controles {
+    grid-area: controles; display: flex; align-items: center; gap: 4px; margin: 0;
+  }
+  .botao-tocar { width: 48px; height: 48px; }
+  .volume, .rodape-player { display: none !important; }
 }
