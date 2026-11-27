@@ -91,4 +91,64 @@ teste('arquivo sem etiqueta não quebra', () => {
   assert.strictEqual(N.tamanhoID3(new Uint8Array(3)), 0);
 });
 
+const A = require('./audius.js');
+teste('Audius: resposta da API vira música da fila (e só as que tocam)', () => {
+  const resposta = [
+    { id: 'YmJWK', title: ' Samba de Roda ', duration: 215, genre: 'Samba', permalink: '/ana/samba',
+      user: { name: 'Ana' }, artwork: { '150x150': 'p.jpg', '480x480': 'g.jpg' }, is_streamable: true },
+    { id: 'x1', title: 'Exclusiva', user: { name: 'B' }, is_streamable: false },
+    { id: 'x2', title: 'Apagada', user: { name: 'C' }, is_delete: true },
+    null,
+  ];
+  const l = A.tocaveis(resposta).map(A.paraMusica);
+  assert.strictEqual(l.length, 1);
+  const m = l[0];
+  assert.strictEqual(m.id, 'au-YmJWK');
+  assert.strictEqual(m.fonte, 'audius');
+  assert.strictEqual(m.titulo, 'Samba de Roda');
+  assert.strictEqual(m.artista, 'Ana');
+  assert.strictEqual(m.duracao, 215);
+  assert.strictEqual(m.capaUrl, 'g.jpg');
+  assert.strictEqual(m.capaPequena, 'p.jpg');
+  assert.strictEqual(m.link, 'https://audius.co/ana/samba');
+  assert.ok(A.enderecoDoSom('YmJWK').startsWith('https://api.audius.co/v1/tracks/YmJWK/stream?app_name=radiola'));
+});
+
+const C = require('./colecao.js');
+teste('coleção: criar playlist (nome limpo, sem repetir)', () => {
+  const pls = [];
+  assert.strictEqual(C.criar(pls, '   '), null);
+  const a = C.criar(pls, '  Treino   da  manhã ');
+  assert.strictEqual(a.nome, 'Treino da manhã');
+  assert.strictEqual(C.criar(pls, 'treino da MANHÃ').nome, 'treino da MANHÃ (2)');
+  assert.strictEqual(C.criar(pls, 'x'.repeat(60)).nome.length, 40);
+  assert.strictEqual(pls.length, 3);
+  assert.notStrictEqual(pls[0].id, pls[1].id);
+});
+
+teste('coleção: pôr, tirar, curtir e apagar de todas as listas', () => {
+  const lista = [];
+  assert.ok(C.por(lista, 'a'));
+  assert.ok(!C.por(lista, 'a'));           // não repete
+  assert.ok(C.por(lista, 'b'));
+  assert.ok(C.tirar(lista, 'a'));
+  assert.deepStrictEqual(lista, ['b']);
+  const curtidas = [];
+  assert.strictEqual(C.alternar(curtidas, 'x'), true);
+  assert.strictEqual(C.alternar(curtidas, 'x'), false);
+  const pls = [{ id: 'p', nome: 'P', ids: ['x', 'y'] }];
+  C.alternar(curtidas, 'x');
+  C.esquecer('x', curtidas, pls);
+  assert.deepStrictEqual(curtidas, []);
+  assert.deepStrictEqual(pls[0].ids, ['y']);
+  assert.strictEqual(C.contar(1), '1 música');
+  assert.strictEqual(C.contar(0), '0 músicas');
+});
+
+teste('coleção: dado estragado não quebra', () => {
+  assert.deepStrictEqual(C.arrumar(null), []);
+  assert.deepStrictEqual(C.arrumar([null, { id: 1 }, { id: 'p', nome: '  ', ids: [] }]), []);
+  assert.deepStrictEqual(C.arrumar([{ id: 'p', nome: 'Ok', ids: ['a', 3, null] }]), [{ id: 'p', nome: 'Ok', ids: ['a'], criado: 0 }]);
+});
+
 console.log(`\n${ok} testes passaram.`);

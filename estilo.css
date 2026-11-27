@@ -112,7 +112,8 @@ button:focus-visible, label:focus-visible, input:focus-visible { outline: 3px so
   position: relative;
 }
 .dial-escala::after {      /* o ponteiro do dial, na primeira estação */
-  content: ""; position: absolute; top: -3px; bottom: -3px; left: 10%;
+  content: ""; position: absolute; top: -3px; bottom: -3px; left: var(--ponteiro, 10%);
+  transition: left 300ms var(--ease-out);
   width: 3px; border-radius: 2px; background: var(--ambar-luz);
   box-shadow: 0 0 8px var(--ambar-luz);
 }
@@ -139,7 +140,8 @@ button:focus-visible, label:focus-visible, input:focus-visible { outline: 3px so
   .palco { grid-template-columns: 380px minmax(0, 1fr); align-items: start; }
   .toca { position: sticky; top: 16px; }
 }
-.toca, .fila {
+.coluna { display: grid; gap: 16px; min-width: 0; align-content: start; }
+.toca, .fila, .estacao-painel, .colecao {
   background: var(--cartao); border: 1px solid var(--borda);
   border-radius: 18px; box-shadow: var(--sombra); padding: 18px;
   min-width: 0;
@@ -168,6 +170,19 @@ button:focus-visible, label:focus-visible, input:focus-visible { outline: 3px so
 .titulo { margin: 0; font-weight: 700; font-size: 1.15rem; overflow-wrap: anywhere; }
 .artista { margin: 2px 0 0; color: var(--suave); overflow-wrap: anywhere; }
 
+/* curtir e pôr na playlist */
+.acoes-musica { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+.botao-acao {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px;
+  border-radius: 999px; border: 1px solid var(--borda); background: transparent; color: var(--suave); font-size: .9rem;
+  transition: transform 160ms var(--ease-out), color 150ms ease, border-color 150ms ease;
+}
+.botao-acao svg { width: 18px; height: 18px; }
+.botao-acao:not(:disabled):active { transform: scale(0.95); }
+.botao-acao:disabled { opacity: .45; cursor: default; }
+.botao-acao[aria-pressed="true"] { color: var(--ambar); border-color: var(--ambar); }
+.botao-acao[aria-pressed="true"] path { fill: currentColor; }
+@media (hover: hover) and (pointer: fine) { .botao-acao:not(:disabled):hover { color: var(--texto); border-color: var(--suave); } }
 .barra { margin: 14px 0 4px; }
 .tempos { display: flex; justify-content: space-between; font-size: .8rem; color: var(--suave); font-variant-numeric: tabular-nums; }
 
@@ -216,7 +231,75 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 999px; background: var(--ambar); color: var(--sobre-ambar);
   font-weight: 600; cursor: pointer; user-select: none;
 }
-.aviso { min-height: 1.2em; margin: 8px 0 4px; color: var(--suave); font-size: .9rem; }
+/* sua coleção */
+.botao-secundario {
+  min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--ambar);
+  background: transparent; color: var(--ambar); font-weight: 600;
+  transition: transform 160ms var(--ease-out);
+}
+.botao-secundario:active { transform: scale(0.97); }
+.nova-linha { display: flex; gap: 8px; margin-top: 12px; }
+.nova-linha[hidden] { display: none; }   /* o display: flex passava por cima do "hidden" */
+.nova-linha input {
+  flex: 1; min-width: 0; min-height: 44px; padding: 0 16px; border-radius: 999px;
+  border: 1px solid var(--borda); background: var(--fundo); color: var(--texto); font-size: 16px;
+}
+.listas { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+.lista-item { border: 1px solid var(--borda); border-radius: 14px; overflow: hidden; }
+.lista-cab { display: grid; grid-template-columns: 40px minmax(0, 1fr) 44px; align-items: center; gap: 10px; padding: 6px 6px 6px 8px; }
+.lista-icone { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--madeira-clara), var(--madeira)); color: #f8e8d2; }
+.lista-icone svg { width: 20px; height: 20px; }
+.lista-icone.curtidas { background: linear-gradient(135deg, var(--ambar-luz), var(--ambar)); color: #2b1a0c; }
+.lista-icone.curtidas path { fill: currentColor; }
+.lista-abrir { min-width: 0; text-align: left; background: none; border: 0; padding: 4px 0; }
+.lista-abrir strong, .lista-abrir span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lista-abrir span { color: var(--suave); font-size: .85rem; }
+.lista-tocar { width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center;
+  background: var(--ambar); color: var(--sobre-ambar); transition: transform 160ms var(--ease-out); }
+.lista-tocar svg { width: 20px; height: 20px; }
+.lista-tocar:active { transform: scale(0.94); }
+.lista-tocar:disabled { opacity: .35; }
+.lista-corpo { border-top: 1px solid var(--borda); padding: 4px 6px 8px; }
+.lista-corpo .lista { margin: 0; }
+.lista-vazia { color: var(--suave); font-size: .9rem; margin: 8px 6px; }
+.lista-rodape { display: flex; justify-content: flex-end; padding: 4px 6px 0; }
+.link-perigo { background: none; border: 0; color: var(--suave); font-size: .85rem; text-decoration: underline; padding: 8px 4px; min-height: 40px; }
+@media (hover: hover) and (pointer: fine) { .link-perigo:hover { color: #c2410c; } }
+
+/* janelinha "Pôr na playlist" */
+.dialogo {
+  width: min(92vw, 400px); border: 1px solid var(--borda); border-radius: 18px; padding: 16px;
+  background: var(--cartao); color: var(--texto); box-shadow: var(--sombra);
+}
+.dialogo::backdrop { background: rgba(10, 6, 3, .55); }
+.dialogo[open] { animation: dialogo-entra 220ms var(--ease-out); }
+@keyframes dialogo-entra { from { opacity: 0; transform: scale(0.96); } }
+@media (prefers-reduced-motion: reduce) { .dialogo[open] { animation: none; } }
+.dialogo-topo { display: flex; align-items: center; justify-content: space-between; }
+.dialogo-topo h2 { margin: 0; font: 700 1.15rem Georgia, serif; }
+.dialogo-musica { margin: 2px 0 10px; color: var(--suave); overflow-wrap: anywhere; }
+.dialogo-lista { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); /* a coluna pode encolher: nome comprido ganha "..." */ gap: 6px; max-height: 45vh; overflow-y: auto; }
+.dialogo-lista button {
+  width: 100%; min-height: 44px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 0 14px; border-radius: 12px; border: 1px solid var(--borda); background: var(--fundo); color: var(--texto); text-align: left;
+}
+/* min-width: 0 deixa o nome encolher e ganhar "..." (sem ele, o nome comprido empurrava o botão para fora) */
+.dialogo-lista button span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dialogo-lista button span:last-child { flex: none; color: var(--suave); font-size: .85rem; }
+.dialogo-lista button.ja span:last-child { color: var(--ambar); }
+.dialogo-lista button.ja { color: var(--ambar); border-color: var(--ambar); }
+
+/* busca do Audius */
+.busca { display: flex; gap: 8px; margin-top: 12px; }
+.busca input {
+  flex: 1; min-width: 0; min-height: 44px; padding: 0 16px; border-radius: 999px;
+  border: 1px solid var(--borda); background: var(--fundo); color: var(--texto); font-size: 16px;   /* 16px: o celular não dá zoom */
+}
+.busca input:focus-visible { outline: 3px solid var(--ambar-luz); outline-offset: 1px; }
+.credito { color: var(--suave); font-size: .85rem; text-decoration: none; }
+@media (hover: hover) and (pointer: fine) { .credito:hover { color: var(--ambar); } }
+.aviso { overflow-wrap: anywhere; /* título enorme sem espaço não empurra a página */ min-height: 1.2em; margin: 8px 0 4px; color: var(--suave); font-size: .9rem; }
 .aviso:empty { margin: 4px 0 0; min-height: 0; }
 
 .lista { list-style: none; margin: 0; padding: 0; }

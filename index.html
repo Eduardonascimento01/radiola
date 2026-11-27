@@ -28,11 +28,11 @@
   </header>
 
   <!-- O "dial" da radiola: escolhe de onde vem o som. As outras estações chegam nas próximas etapas. -->
-  <nav class="dial" aria-label="De onde vem o som">
+  <nav class="dial" id="dial" aria-label="De onde vem o som">
     <div class="dial-escala" aria-hidden="true"></div>
     <div class="estacoes">
-      <button class="estacao ativa" type="button" aria-pressed="true">Meus arquivos</button>
-      <button class="estacao" type="button" disabled title="Chega na etapa 2">Audius</button>
+      <button class="estacao ativa" type="button" data-estacao="arquivos" aria-pressed="true">Meus arquivos</button>
+      <button class="estacao" type="button" data-estacao="audius" aria-pressed="false">Audius</button>
       <button class="estacao" type="button" disabled title="Chega na etapa 4">Rádio</button>
       <button class="estacao" type="button" disabled title="Chega na etapa 5">YouTube</button>
       <button class="estacao" type="button" disabled title="Chega na etapa 5">Spotify</button>
@@ -46,7 +46,12 @@
       </div>
       <div class="info">
         <p class="titulo" id="titulo">Nenhuma música tocando</p>
-        <p class="artista" id="artista">Adicione músicas do seu aparelho para começar</p>
+        <p class="artista" id="artista">Adicione músicas do aparelho ou busque no Audius</p>
+      </div>
+      <!-- curtir e pôr na playlist (valem para a música que está tocando) -->
+      <div class="acoes-musica">
+        <button id="curtir" class="botao-acao" type="button" aria-pressed="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-9.2-8.6C1.2 8.3 3 5 6.3 5c2 0 3.2 1.1 3.7 2.1.5-1 1.7-2.1 3.7-2.1C17 5 18.8 8.3 17.2 11.4 15 15.6 12 20 12 20z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" transform="translate(1.5 0)"/></svg><span>Curtir</span></button>
+        <button id="porNaPlaylist" class="botao-acao" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h11M4 11h11M4 16h7M18 13v8M14 17h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Playlist</span></button>
       </div>
 
       <div class="barra">
@@ -81,6 +86,21 @@
       </label>
     </section>
 
+    <div class="coluna">
+    <!-- Estação Audius: buscar e tocar músicas inteiras, grátis -->
+    <section class="estacao-painel" id="painelAudius" aria-label="Audius" hidden>
+      <div class="fila-topo">
+        <h2>Audius</h2>
+        <a class="credito" href="https://audius.co" target="_blank" rel="noopener">músicas do Audius ↗</a>
+      </div>
+      <div class="busca">
+        <input type="search" id="buscaAudius" placeholder="Buscar música ou artista (ex: samba, lofi)" aria-label="Buscar no Audius" enterkeyhint="search" autocomplete="off">
+        <button class="botao-principal" type="button" id="buscarAudius">Buscar</button>
+      </div>
+      <p class="aviso" id="avisoAudius" role="status" aria-live="polite"></p>
+      <ol class="lista" id="resultadosAudius"></ol>
+    </section>
+
     <section class="fila" aria-label="Sua fila">
       <div class="fila-topo">
         <h2>Sua fila <span id="contagem"></span></h2>
@@ -91,16 +111,47 @@
       <ol class="lista" id="lista"></ol>
       <div class="vazio" id="vazio">
         <p><strong>A fila está vazia.</strong></p>
-        <p>Toque em <em>Adicionar músicas</em> e escolha arquivos do seu aparelho (MP3, M4A, OGG, WAV...). No computador, dá também para arrastar os arquivos para cá.</p>
+        <p>Toque em <em>Adicionar músicas</em> e escolha arquivos do seu aparelho (MP3, M4A, OGG, WAV...). No computador, dá também para arrastar os arquivos para cá. Ou escolha <em>Audius</em> no dial para buscar músicas grátis.</p>
         <p class="dica">As músicas ficam guardadas só neste navegador. Nada é enviado para a internet.</p>
       </div>
     </section>
+
+    <!-- Sua coleção: curtidas, playlists e todas as músicas guardadas -->
+    <section class="colecao" id="colecao" aria-label="Sua coleção">
+      <div class="fila-topo">
+        <h2>Sua coleção</h2>
+        <button class="botao-secundario" type="button" id="novaPlaylist">+ Nova playlist</button>
+      </div>
+      <div class="nova-linha" id="novaLinha" hidden>
+        <input type="text" id="nomePlaylist" maxlength="40" placeholder="Nome da playlist (ex: Treino)" aria-label="Nome da nova playlist" enterkeyhint="done" autocomplete="off">
+        <button class="botao-principal" type="button" id="criarPlaylist">Criar</button>
+      </div>
+      <p class="aviso" id="avisoColecao" role="status" aria-live="polite"></p>
+      <ul class="listas" id="listas"></ul>
+    </section>
+    </div>
   </main>
+
+  <!-- janelinha "Pôr na playlist" -->
+  <dialog class="dialogo" id="dialogoPlaylist" aria-labelledby="tituloDialogo">
+    <div class="dialogo-topo">
+      <h2 id="tituloDialogo">Pôr na playlist</h2>
+      <button class="botao-icone" type="button" id="fecharDialogo" aria-label="Fechar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+    </div>
+    <p class="dialogo-musica" id="dialogoMusica"></p>
+    <ul class="dialogo-lista" id="dialogoLista"></ul>
+    <div class="nova-linha">
+      <input type="text" id="nomeNoDialogo" maxlength="40" placeholder="Ou crie uma nova" aria-label="Nome da nova playlist" enterkeyhint="done" autocomplete="off">
+      <button class="botao-principal" type="button" id="criarNoDialogo">Criar</button>
+    </div>
+  </dialog>
 
   <div class="soltar" id="soltar" hidden><p>Solte as músicas aqui</p></div>
 
   <script src="nucleo.js"></script>
   <script src="banco.js"></script>
+  <script src="audius.js"></script>
+  <script src="colecao.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
